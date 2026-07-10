@@ -29,7 +29,12 @@ mkdir -p "$RESULTS"
 CMD="${ROLLOUT_CMD:-/parallax-should-i-buy}"
 PREFIX="${ROLLOUT_PREFIX:-should-i-buy}"
 
-SAFE_ID=$(printf '%s_%s' "$ARGS" "$LANG_ARG" | tr -c 'A-Za-z0-9._-' '_')
+# Bound the id: short-ticker skills (should-i-buy "AAPL") slug fine, but free-text
+# skills (a thesis paragraph) would overflow the 255-byte filename limit. Cap the
+# slug and append a stable hash of the full args so ids stay unique + readable.
+RAW_ID=$(printf '%s_%s' "$ARGS" "$LANG_ARG" | tr -c 'A-Za-z0-9._-' '_')
+ARGS_HASH=$(printf '%s_%s' "$ARGS" "$LANG_ARG" | cksum | cut -d' ' -f1)
+SAFE_ID="$(printf '%.60s' "$RAW_ID")_${ARGS_HASH}"
 TS=$(date -u +%Y%m%dT%H%M%SZ)
 OUT="$RESULTS/${PREFIX}_${LABEL}_${SAFE_ID}_${TS}.stream.json"
 
