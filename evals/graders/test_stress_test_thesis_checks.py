@@ -31,6 +31,9 @@ GOLDEN = """~4 min read
 ## Thesis Restatement
 A macro-led long thesis: rate cuts re-rate long-duration growth.
 
+## Coverage Notice
+Full coverage — a US-macro / equity-style thesis; every leg reads directly, no partial or out-of-scope legs.
+
 ## Assumption Map
 | id | layer | claim | criticality | testability |
 |---|---|---|---|---|
@@ -52,11 +55,11 @@ macro-1 is load-bearing and Contradicted.
 ## World Verdict
 Assumption Strength: Weak. The chain fails at the entry premise.
 
-## What to Watch
-An easing pivot; curve re-steepening.
-
 ## Bias & Conviction Check
 🟡 Elevated — narrative fallacy: the "macro shift" story carries the case past a falsifiable step, though the core macro premise stays testable.
+
+## What to Watch
+An easing pivot; curve re-steepening.
 
 ## Confidence & Caveats
 Macro read dated 2026-06-24; two weeks stale.
@@ -162,6 +165,18 @@ def test_hype_meter_light_vacuous_when_no_section():
 def test_tldr_required():
     no_tldr = GOLDEN.replace("## TL;DR", "## Summary")
     assert _results(no_tldr)["sections_present"] is False
+
+
+def test_coverage_notice_required():
+    # The early full/partial/out-of-scope disclosure is standard render, not optional.
+    no_cov = GOLDEN.replace("## Coverage Notice", "## Coverage Info")
+    assert _results(no_cov)["sections_present"] is False
+
+
+def test_bias_conviction_check_required():
+    # The "hype meter" is standard render — its omission must trip sections_present.
+    no_bias = GOLDEN.replace("## Bias & Conviction Check", "## Vibe Check")
+    assert _results(no_bias)["sections_present"] is False
 
 
 # --- assumption_map_layered (NEW) ------------------------------------------

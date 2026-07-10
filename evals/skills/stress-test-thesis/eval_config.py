@@ -39,10 +39,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _REQUIRED_SECTIONS = [
     "TL;DR",                             # standard render — leads every report at every depth
     "Thesis Restatement",
+    "Coverage Notice",                   # standard render — early full/partial/out-of-scope disclosure
     "Assumption Map",
     "Pass 1 — Load-Bearing Vulnerabilities",
     "Assumption-by-Assumption",
     "World Verdict",
+    "Bias & Conviction Check",           # standard render — the "hype meter", client-invariant
     "What to Watch",
     "Confidence & Caveats",
 ]
@@ -56,12 +58,12 @@ _SECTION_LABELS = [
     "Assumption-by-Assumption",
     "Position-Level Read",               # ticker-only
     "World Verdict",
+    "Bias & Conviction Check",           # the "hype meter" — client-invariant Pass-1 read, under World Verdict
     "House-View Alignment",              # active-view-only (read-only conflict flag)
     "Pass 2 — Holder-Dependent Assumptions",         # profile-only
     "Pass 2 — Client-Conditioned Vulnerabilities",   # profile-only
     "Suitability-Relevant Flags",        # profile-only
     "Client-Conditioned Verdict",        # profile-only
-    "Bias & Conviction Check",           # the "hype meter" — argument-language bias read
     "What to Watch",
     "What Changed",                      # decay-compare only (prior-run supplied)
     "Confidence & Caveats",

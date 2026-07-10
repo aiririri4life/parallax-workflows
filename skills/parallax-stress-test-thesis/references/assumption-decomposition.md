@@ -44,6 +44,14 @@ For every assumption, record:
 | `testability` | direct / partial / out-of-scope / needs-client-profile | `out-of-scope` = outside Parallax's coverage even at the country-macro level — don't guess, mark it. **A rates/curve/duration or FX leg is `partial`, NOT `out-of-scope`**: it's readable as a country-level regime via `macro_analyst` `fixed_income`/`currency` (the instrument itself isn't scored, but the regime is). Crypto/options/futures/private assets are `out-of-scope` as instruments — testable only through their equity expressions as layer-3 positions. See `market-stress-test.md` "Known Limitations — asset-class coverage & routing" |
 | `client_relative` | yes / no | Does the answer to "is this true" depend on who holds the position? Layer 5 is always `yes`. Layer 1–4 is usually `no` — flag `yes` only if a layer 1–4 claim is genuinely ambiguous without knowing the holder (rare; when in doubt, `no` and let Phase 5's severity re-weighting do the client-specific work instead) |
 
+**These `testability` values roll up into the early Coverage Notice.** Aggregate them across the map
+— all `direct`/`partial` on covered markets → **full**; any leg readable only as a country-level
+regime (rates/FX) → **partial**; any leg `out-of-scope` as an instrument (crypto/options/futures/
+commodities/private) → call it out — and render that one-line summary **up front, right under Thesis
+Restatement** (SKILL.md Output Format), so the reader learns the resolution limit before the deep
+analysis rather than inferring it from Unconfirmed rows at the end. The full/partial/out-of-scope
+taxonomy itself lives in `market-stress-test.md` "Known Limitations".
+
 ## Worked example
 
 Thesis: *"I like long-duration growth equities here because the rate-cutting cycle is starting,
