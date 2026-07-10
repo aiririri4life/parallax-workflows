@@ -36,7 +36,35 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 /parallax-stress-test-thesis "Rotate into crypto-adjacent equities now that the halving cycle plus ETF inflows are re-rating the space" client_profile={"age":27,"horizon":"20+ years","risk_capacity":"high","income_reliance":"accumulating","position_size_pct_networth":0.05,"risk_tolerance":"high"}
 ```
 
+**Optional XML input form** (equivalent to the inline form above — accept either; a thesis wrapped in
+tags is parsed from the tag body, never re-interpreted). Recognize `<thesis_input>…</thesis_input>`
+(the argument text), `<client_profile>…</client_profile>` (same fields as the `client_profile=` object,
+JSON or key:value), and `<analysis_level>quick|standard|deep</analysis_level>` (a hint only: `deep`
+invites the optional `get_assessment` cross-check in Phase 4, `quick`/absent stays records-only — it
+never gates a phase or short-circuits the run). Unknown tags are ignored, not errors. There is no
+persisted-state / "watcher" import tag — this skill writes nothing and reads no prior-run state.
+
 **Degenerate inputs** (handle before Phase 1 — see `references/assumption-decomposition.md` for detail): tickers with no argument → ask for the *why*; argument with no tickers → run Phases 2 and 4, skip Phase 3 and say so; no `client_profile` → run Pass 1 only, state Pass 2 was skipped for lack of a profile; `client_profile` missing `horizon` or `income_reliance` → ask for those before running Phase 5.
+
+## Modes — depth, scope, export
+
+→ Load `references/output-modes.md` when any of these apply. **All are presentation/selection
+controls, never safety switches**: none may skip Phase 0, report a status without a live read, or
+drop the disclaimer.
+
+- **Depth** — `quick` / `standard` (default) / `deep` sets verbosity and whether the optional
+  `get_assessment` cross-check fires. `quick` still runs every mandatory live read — it shortens the
+  prose, it does not skip facts. When interactive and no level was given (via `<analysis_level>` or
+  inline), ask once with a clickable `AskUserQuestion` (Quick note / Standard / Deep dive) — fold it
+  into the `client_profile` questionnaire if one is being collected.
+- **Single-layer scope** — if the user asks for one layer only ("just macro", "personal angle
+  only"), test only that layer but still render the full five-layer Assumption Map with the rest
+  marked *not tested*, scope the World Verdict/Assumption Strength to the tested layer, and warn that
+  fragility may live in an un-analyzed layer. Layer 5 cannot stand fully alone (its re-weighting
+  consumes Pass-1 outputs) — see the reference.
+- **Copy-ready export** — a purpose-tailored fenced block (Email / Quick note / Talking points /
+  Doc), asked via `AskUserQuestion`. The disclaimer + no-recommendation framing travel with every
+  variant; purpose tailors format and length only.
 
 ## Where artifacts live
 
@@ -58,7 +86,10 @@ Parse the thesis (inline text, or extract from a document/URL locally first — 
 leaves the session) into the Assumption Map across the five layers. → Load
 `references/assumption-decomposition.md` for the taxonomy, per-assumption record, extraction
 quality gate, and degenerate-input handling. **Play the Assumption Map back to the user before any
-Phase 2/3 tool calls fire.**
+Phase 2/3 tool calls fire.** (Headless/single-shot run → render the map, proceed without a
+correction turn, and note *extraction unverified* in Confidence & Caveats. Auto/autonomous mode in
+an interactive session → render the map, proceed without blocking, but invite correction on the
+next turn rather than stamping it unverified. See the reference's "No-blocking-gate runs" note.)
 
 ### PASS 1 — Client-invariant (what is true about the world)
 
@@ -77,13 +108,15 @@ macro alignment vs. Phase 2, news check with staleness caveat.
 
 #### Phase 4 — World verdict
 
-→ Load `references/world-verdict.md`. Call `get_assessment` (async ~3min — fire it, don't block)
-handing over the structured Phase-2/3 records as **fixed inputs** (it synthesizes the statuses, it
-does not re-derive them), stay client-invariant (never mention a `client_profile` here — that is
-Phase 5's job), and ask exactly three questions: which assumptions the thesis most depends on,
-which are least supported, and where it most likely fails first and over what horizon —
-independent of who holds it. If the call times out, synthesize the verdict from the records per the
-reference's fallback rather than gating the report.
+→ Load `references/world-verdict.md`. **Synthesize the World Verdict from the structured Phase-2/3
+records by default** — that is the primary path and needs no async call. `get_assessment` is an
+*optional* deep-research cross-check (async ~3min): fire it only when an external pass is wanted, and
+if you do, hand the records over as **fixed inputs**, stay client-invariant (never mention a
+`client_profile` here — that is Phase 5's job), ask exactly three questions (which assumptions the
+thesis most depends on, which are least supported, where it most likely fails first and over what
+horizon — holder-independent), and **never paste its output raw** — the word bound is a hint the
+model ignores, so extract the three answers and compress them yourself. If it is skipped, errors, or
+times out, use the records-based synthesis rather than gating the report.
 
 ### PASS 2 — Client conditioning (what it means for this investor)
 
@@ -98,19 +131,26 @@ emit suitability-relevant flags. Never rewrites a Pass-1 status.
 
 ## Output Format
 
+Depth (§Modes) sets which of these render in full vs. collapsed; the **bold-starred** items below
+survive at every depth and in every export — they are never collapsed away. → `references/output-modes.md`.
+
+- **`~N min read`** *(top marker)* — estimated read time of the rendered report (~200 wpm, rounded up); labeled as an estimate
+- **TL;DR** — 3–5 bullets compressing the body (Assumption Strength, top vulnerability + status, most-likely break + horizon, top client flag if any), closing with "rates the argument, not the security." Introduces nothing not in the body below
 - **Thesis Restatement** (1–2 sentences confirming what was understood, per the Phase 1 playback)
 - **Client Profile Summary** *(only if `client_profile` supplied)* — the fields as given, and which high-impact fields (if any) were missing and asked for
 - **Assumption Map** (table: `id`, `layer`, `claim`, `criticality`, `testability`)
 - **Pass 1 — Load-Bearing Vulnerabilities** (the headline: 2–4 assumptions the thesis most depends on, by criticality × Supported/Contradicted status)
 - **Assumption-by-Assumption** (table: `id`, `status`, `break_condition`, `magnitude`, `time_to_play_out`)
 - **Position-Level Read** *(omit entirely if no tickers — say so under Thesis Restatement instead)* — direction alignment, peer-relative factor check, macro alignment, news + staleness caveat, per symbol
-- **World Verdict** (from Phase 4 `get_assessment` — what has to be true, where it most likely fails)
+- **World Verdict** (Phase 4 records synthesis; `get_assessment` optional cross-check — what has to be true, where it most likely fails). Lead it with an **Assumption Strength** label — `Weak` / `Mixed` / `Strong` — rating how well the load-bearing assumptions are supported by the current reads (Weak = a high-criticality assumption is Contradicted or Unconfirmed; Strong = the load-bearing set is Supported). **This rates the argument's evidential support, not the security — it is explicitly NOT a buy/sell/hold call, a PASS/FAIL grade, or a suitability verdict.** Never render it as a traffic-light gate that halts or short-circuits the report; every section still runs. Optionally annotate each Load-Bearing Vulnerability with the same Weak/Mixed/Strong tag for its own assumption.
 - **Pass 2 — Holder-Dependent Assumptions** *(only if profile supplied)* — the layer-5 rows, Supported/Contradicted for this person
 - **Pass 2 — Client-Conditioned Vulnerabilities** *(only if profile supplied)* — re-ranked using `client_severity`; state what moved vs. the Pass-1 ranking and why
-- **Suitability-Relevant Flags** *(only if profile supplied and any fired)* — risk observations only, never a call; each closes with the qualified-professional reminder
+- **Suitability-Relevant Flags** *(only if profile supplied)* — risk observations only, never a call; each closes with the qualified-professional reminder. **If none fired, render a one-line "No suitability flags fired" rather than omitting the section**, so the reader can see the check ran and nothing escalated (a legitimate, common outcome for a long-horizon/accumulating holder)
 - **Client-Conditioned Verdict** *(only if profile supplied)* — what this means for this investor specifically
 - **What to Watch** (2–3 signals that would confirm or invalidate the thesis; if a profile was supplied, note any that are specifically holder-relevant)
-- **Confidence & Caveats** (extraction quality, Unconfirmed/out-of-scope assumptions, data staleness)
+- **Confidence & Caveats** (extraction quality, Unconfirmed/out-of-scope assumptions, data staleness; in single-layer mode, the prominent "layers not tested" warning)
+- **Detail toggle** *(footer line)* — offer `expand` (full per-assumption reasoning at `deep` verbosity) / `collapse` (TL;DR + fragile points only). Re-renders from the same records — never re-runs tools or re-derives statuses. Collapsing never hides a Contradicted/Unconfirmed status or the disclaimer
+- **Copy-ready export** *(offered after the report; on request)* — ask purpose via `AskUserQuestion` (Email / Quick note / Talking points / Doc), then render one fenced block tailored to it. **Every variant carries the disclaimer + no-recommendation framing and any material staleness/Unconfirmed caveat; purpose tailors format and length only, never substance.** Rendered as a copy-out-of-chat block — there is no OS-clipboard write
 
 **AI-interaction disclosure (always):** Render `parallax-conventions.md §9.2` immediately above the disclaimer below.
 

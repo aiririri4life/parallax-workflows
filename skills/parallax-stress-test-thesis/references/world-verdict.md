@@ -15,10 +15,13 @@ The **structured records** already produced in Phases 1–3, not the raw tool ou
 - the Phase-3 position reads (direction alignment, peer-relative factor check, macro alignment,
   news + staleness), if the thesis named any tickers.
 
-## The call
+## The call (optional enrichment — not the default)
 
-Fire `get_assessment` (**async, ~3 min** — fire it and don't block; per
-`_parallax/parallax-conventions.md` §4). The prompt must:
+**Build the World Verdict from the Phase-2/3 records by default** (see "Default synthesis" below).
+`get_assessment` is an *optional* deep-research cross-check, not the source of truth and not required
+for a complete verdict. Fire it only when the operator wants an external-research pass and can absorb
+the ~3-min latency. When you do fire it (**async, ~3 min** — fire it and don't block; per
+`_parallax/parallax-conventions.md` §4), the prompt must:
 
 - **Hand the per-assumption records over as fixed inputs.** The statuses were already established
   against live data in Phase 2/3 — the assessment *synthesizes* them, it does not re-derive or
@@ -32,6 +35,13 @@ Fire `get_assessment` (**async, ~3 min** — fire it and don't block; per
 - **Ask exactly three questions:** (1) which assumptions the thesis most depends on (load-bearing);
   (2) which are least supported by the current reads; (3) where it most likely fails first, and
   over what horizon — independent of who holds it.
+- **Bound the response — but do not trust the bound.** Ask for **≤300 words, structured around the
+  three questions, no asset-class literature review** — but treat this as a *hint the deep-research
+  model empirically ignores*: it has returned ~2,000-word, multi-citation essays with their own
+  section headers, and can **truncate mid-sentence**. Enforcement therefore lives on OUR side, not in
+  the prompt: **never paste `get_assessment` output into the report raw.** Extract only its answers to
+  the three questions, discard the literature review and headers, and compress into the World Verdict
+  yourself. Treat the returned text as best-effort research notes, not finished copy.
 
 ## What Phase 4 emits
 
@@ -40,11 +50,12 @@ load-bearing, and the most likely failure with its sequence and horizon — all 
 This is also the ranking that Phase 5 re-weights (never overwrites) when a profile is supplied, so
 keep it explicit and ordered.
 
-## Fallback — `get_assessment` unavailable or times out
+## Default synthesis (records-based) — also the fallback if `get_assessment` is skipped or times out
 
-`get_assessment` is a synthesis convenience, **not the source of truth** — the Pass-1 findings
-already live in the structured Phase-2/3 records. If it errors or times out past a reasonable wait,
-synthesize the World Verdict directly from those records rather than blocking the report:
+This is the **primary path**: the Pass-1 findings already live in the structured Phase-2/3 records,
+so the World Verdict is fully synthesizable without any async call. Use it by default, and also
+whenever `get_assessment` is skipped, errors, or times out past a reasonable wait — never block the
+report on that call. Synthesize the verdict directly from the records:
 
 - rank load-bearing assumptions by `criticality` × status severity (a **Contradicted**
   high-criticality assumption outranks an Unconfirmed one, which outranks a Supported one) and

@@ -41,7 +41,7 @@ For every assumption, record:
 | `layer` | 1–5 | Per the taxonomy above |
 | `claim` | one falsifiable sentence | If you can't state it as something that could be wrong, it isn't an assumption yet — decompose further |
 | `criticality` | high / med / low | How much of the thesis's conclusion collapses if this one claim is false |
-| `testability` | direct / partial / out-of-scope / needs-client-profile | `out-of-scope` = outside Parallax's 15-market, public-equity coverage (see Known Limitations) — don't guess, mark it |
+| `testability` | direct / partial / out-of-scope / needs-client-profile | `out-of-scope` = outside Parallax's coverage even at the country-macro level — don't guess, mark it. **A rates/curve/duration or FX leg is `partial`, NOT `out-of-scope`**: it's readable as a country-level regime via `macro_analyst` `fixed_income`/`currency` (the instrument itself isn't scored, but the regime is). Crypto/options/futures/private assets are `out-of-scope` as instruments — testable only through their equity expressions as layer-3 positions. See `market-stress-test.md` "Known Limitations — asset-class coverage & routing" |
 | `client_relative` | yes / no | Does the answer to "is this true" depend on who holds the position? Layer 5 is always `yes`. Layer 1–4 is usually `no` — flag `yes` only if a layer 1–4 claim is genuinely ambiguous without knowing the holder (rare; when in doubt, `no` and let Phase 5's severity re-weighting do the client-specific work instead) |
 
 ## Worked example
@@ -78,6 +78,22 @@ claim, criticality) and let them correct a mis-read before any tool calls burn t
 argument. This is the single highest-leverage error-catching step in the whole skill — a
 mis-extracted assumption produces a confidently wrong verdict five phases later. Don't skip this
 for the sake of a faster run.
+
+**No-blocking-gate runs — distinguish two cases; do not conflate them.**
+
+- **Headless / single-shot** (e.g. `claude -p`): there is genuinely no turn for the user to respond
+  in. Render the Assumption Map, state you are proceeding without a correction turn, and record
+  **extraction unverified** in Confidence & Caveats — a mis-read is a permanent known risk here, so
+  flag it as one rather than silently locking it in.
+- **Auto / autonomous mode in an interactive session**: the operator wants you to keep moving without
+  pausing, but a correction turn *is* still available — they can redirect on their next message.
+  Render the Assumption Map, proceed without blocking, and explicitly **invite correction** (e.g.
+  "proceeding on this reading — tell me if any row is mis-extracted"). This is softer than the
+  headless case: do **not** permanently stamp the verdict *extraction unverified*, but make the map
+  prominent so a mis-read is easy to catch on the very next turn.
+
+Never treat the absence of a *blocking* gate as implicit approval in either case — the map must
+always be shown before Phase 2/3 tool calls fire.
 
 ## Degenerate inputs (handle before decomposing)
 

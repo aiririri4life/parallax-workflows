@@ -79,11 +79,81 @@ def _c_verdict_no_rec(t, spec) -> Check:
 
 
 def _c_assumption_map_layered(t, spec) -> Check:
-    """The Assumption Map references the layer taxonomy (>=2 distinct layer keywords)
-    — a proxy that the argument was decomposed across layers, not flattened."""
-    text = _section_text(t.final_prose, "Assumption Map", spec.section_labels).lower()
-    hits = sorted({k for k in _LAYER_KEYWORDS if k in text})
+    """The Assumption Map's id/layer columns reference the layer taxonomy (>=2 distinct
+    layer keywords) — a proxy that the argument was decomposed across layers, not
+    flattened. Scoped to the table's id+layer cells so a stray keyword in surrounding
+    prose (e.g. 'macro backdrop' in a caption) can't satisfy the check; falls back to
+    the full section text if the table doesn't parse, to avoid false failures."""
+    section = _section_text(t.final_prose, "Assumption Map", spec.section_labels)
+    rows = [r for r in section.splitlines() if r.lstrip().startswith("|")]
+
+    def cells(row):
+        return [c.strip() for c in row.strip().strip("|").split("|")]
+
+    scoped = ""
+    if len(rows) >= 3:  # header + separator + >=1 data row
+        header = [c.lower() for c in cells(rows[0])]
+        idxs = [i for i, h in enumerate(header) if "id" in h or "layer" in h]
+        for row in rows[2:]:
+            c = cells(row)
+            scoped += " " + " ".join(c[i] for i in idxs if i < len(c))
+
+    haystack = (scoped if scoped.strip() else section).lower()
+    hits = sorted({k for k in _LAYER_KEYWORDS if k in haystack})
     return Check("assumption_map_layered", len(hits) >= 2, f"layer_keywords={hits}")
+
+
+_EMPTY_CELLS = {"", "—", "-", "n/a", "na", "none", "tbd"}
+
+
+def _c_break_condition_fields(t, spec) -> Check:
+    """Every Supported/Contradicted row in the Assumption-by-Assumption table states
+    a magnitude AND a time_to_play_out — both mandatory per SKILL.md success
+    criterion 3, because Phase 5 cannot re-weight severity without them. Unconfirmed
+    rows are exempt (no break condition to size). Header-aware table parse so the
+    check is robust to column reordering."""
+    text = _section_text(t.final_prose, "Assumption-by-Assumption", spec.section_labels)
+    rows = [r for r in text.splitlines() if r.lstrip().startswith("|")]
+    if len(rows) < 3:  # need header + separator + >=1 data row
+        return Check("break_condition_fields", True, "no assumption rows to check")
+
+    def cells(row):
+        return [c.strip() for c in row.strip().strip("|").split("|")]
+
+    header = [c.lower() for c in cells(rows[0])]
+
+    def col(*names):
+        for i, h in enumerate(header):
+            if any(n in h for n in names):
+                return i
+        return None
+
+    ci_status = col("status")
+    ci_mag = col("magnitude")
+    ci_time = col("time_to_play_out", "time-to-play", "time to play", "time_to")
+    if None in (ci_status, ci_mag, ci_time):
+        return Check("break_condition_fields", False,
+                     f"columns_not_found status={ci_status} mag={ci_mag} time={ci_time}")
+
+    bad = []
+    for row in rows[2:]:  # skip header + separator
+        c = cells(row)
+        if ci_status >= len(c):
+            continue  # can't read status — not a parseable data row
+        status = c[ci_status].lower()
+        if "contradict" not in status and "support" not in status:
+            continue  # Unconfirmed rows have no break condition to size — exempt
+        # Supported/Contradicted: magnitude + time are mandatory. A row that DROPS
+        # those columns entirely is the failure we want to catch (a model silently
+        # narrowing the table), so flag it rather than skipping it as ragged.
+        if max(ci_mag, ci_time) >= len(c):
+            bad.append(c[0] or "?")
+            continue
+        mag = c[ci_mag].strip("* ").lower()
+        tim = c[ci_time].strip("* ").lower()
+        if mag in _EMPTY_CELLS or tim in _EMPTY_CELLS:
+            bad.append(c[0] or "?")
+    return Check("break_condition_fields", not bad, f"rows_missing_magnitude_or_time={bad}")
 
 
 _NO_HALLUC = next(c for c in CRITERIA if c["id"] == "no_hallucinated_data")  # COPIED
@@ -101,11 +171,13 @@ SPEC = EvalSpec(
         "disclaimer_present_correct",  # GENERIC ("not investment advice" — no-profile path renders §9.1)
         "verdict_no_rec",              # NEW (analogue of bottom_line_no_rec)
         "assumption_map_layered",      # NEW (five-layer decomposition ran)
+        "break_condition_fields",      # NEW (magnitude + time_to_play_out mandatory)
         "orchestrator_length",         # GENERIC
     ],
     extra_checks={
         "verdict_no_rec": _c_verdict_no_rec,
         "assumption_map_layered": _c_assumption_map_layered,
+        "break_condition_fields": _c_break_condition_fields,
     },
     tier2_criteria=[
         _NO_HALLUC,  # COPIED
@@ -128,6 +200,16 @@ SPEC = EvalSpec(
             "id": "pushes_back_on_weak_argument",
             "statement": "Where the thesis rests on non-falsifiable or sentiment-based reasoning (e.g., 'it always comes back', social-media sentiment, authority appeals), the report flags these as unsupported or not testable rather than restating them as findings.",
             "pass_when": "Sentiment/authority claims are called out as low-quality or untestable, not validated — the skill does not rubber-stamp a weak thesis.",
+        },
+        {
+            # Partial single-transcript guard for the skill's core invariant. The
+            # full paired-run test (identical Pass-1 across two profiles) still lives
+            # in the manual acceptance suite — see the module docstring — but this
+            # catches an in-transcript Pass-2 status flip. Vacuously true on the
+            # Pass-1-only core tasks (no Pass 2 section present).
+            "id": "pass2_preserves_pass1_status",
+            "statement": "If the transcript contains a Pass 2 (client-conditioning) section, every layer-1–4 assumption's Supported/Contradicted/Unconfirmed status shown there is identical to its Pass-1 status, and Pass 2 only adds a client_severity re-weighting — it never flips a status. If there is no Pass 2 / client_profile, this criterion is satisfied trivially.",
+            "pass_when": "No Pass-1 status is changed by Pass 2; client conditioning changes only severity (client_severity alongside base_severity). Vacuously passes when no client_profile is supplied.",
         },
     ],
     tasks_path="evals/tasks/stress-test-thesis/core.jsonl",

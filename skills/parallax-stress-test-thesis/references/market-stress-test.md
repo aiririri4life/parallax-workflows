@@ -12,8 +12,36 @@ derive markets from the thesis's own macro claims (e.g., a thesis about "US rate
 `United States`; a thesis about "China reopening consumer demand" needs `China`).
 
 Call `list_macro_countries` first if market coverage is in doubt — 15 markets, publicly-traded
-equities only (see Known Limitations). A macro or sector claim about an uncovered market is marked
-`out-of-scope` in the Assumption Map, not guessed.
+equities only (see Known Limitations below). A macro or sector claim about an uncovered market is
+marked `out-of-scope` in the Assumption Map, not guessed.
+
+## Known Limitations — asset-class coverage & routing
+
+Parallax scores **public equities + broad equity/country ETFs**, and provides **country-level
+macro** narrative. It does **not** score coins, currency pairs, individual bonds, spot commodities,
+or derivatives as instruments. This shapes how a non-equity thesis leg is classified — the routing
+below keeps such legs from being either fabricated or wrongly dumped to `out-of-scope`.
+
+**Rates / FX legs are `partial`, not `out-of-scope`.** A thesis leg about bond yields, the curve,
+duration, or the dollar is testable as a *country-level regime read* via `macro_analyst`
+`fixed_income` (rates/curve) or `currency` (FX) — route it there and classify
+Supported/Contradicted on the macro *direction*. State the boundary in the break condition: the
+regime is read, the specific instrument (a given bond, a given FX pair) is not — so trajectory and
+instrument-level basis stay unverified. Only mark `out-of-scope` when even the country-level macro
+is silent or the market isn't covered.
+
+**Do not use asset-class-proxy ETFs as a backdoor to scores.** Non-equity ETFs (bond, gold,
+crypto) are unreliable here: some symbols aren't in the identifier set at all, others resolve to a
+RIC but return no profile/factor scores, and a commodity ETF may return price with **null** factor
+scores. Never present a null/absent-score ETF as a scored read. Broad equity/country ETFs (SPY-type)
+are the reliable ETF surface; asset-class proxies are not.
+
+**Crypto / options / futures / private assets** remain `out-of-scope` as instruments — reachable
+only through their *equity* expressions (e.g. crypto-adjacent or commodity-producer equities), which
+are then tested as ordinary layer-3 positions in Phase 3, never as the underlying asset.
+
+*(Coverage last live-probed 2026-07-04 against the connected MCP; re-probe if Parallax announces new
+asset-class support.)*
 
 ## Batch — fire in parallel
 
@@ -22,7 +50,7 @@ For each selected market:
 | Tool | Parameters | Use for |
 |---|---|---|
 | `get_telemetry` | `fields: ["regime_tag","signals","commentary.headline","commentary.mechanism","divergences"]` | Current regime baseline. **Async, ~15-30s** — do not block the rest of the batch on it. |
-| `macro_analyst` | `market: "<market>"`, `component` per which layers the thesis needs: `"macro_indicators"` (inflation, growth, surprise-index reads — **fire this whenever the thesis makes an explicit inflation or Fed-path claim**, e.g. "disinflation continues" or "the Fed keeps cutting"), `"tactical"` (regime/rates/growth), `"factors"` (macro-level factor tilts), `"sectors"` (sector demand/pricing power claims), `"news"` (theme/sector-level news — **this is how theme news gets tested, not `get_news_synthesis`**, which is symbol-only and belongs to Phase 3) | Layer 1–4 assumption testing, one call per (market × component) |
+| `macro_analyst` | `market: "<market>"`, `component` per which layers the thesis needs: `"macro_indicators"` (inflation, growth, surprise-index reads — **fire this whenever the thesis makes an explicit inflation or Fed-path claim**, e.g. "disinflation continues" or "the Fed keeps cutting"), `"tactical"` (regime/rates/growth), `"fixed_income"` (**the rates/curve/duration path** — yield-curve shape, term-premium, front-end vs. long-end, foreign-demand; fire this for any bond-yield or duration thesis leg), `"currency"` (**the FX path** — dollar/DXY level and regime, carry, mean-reversion; fire this for any currency thesis leg), `"factors"` (macro-level factor tilts), `"sectors"` (sector demand/pricing power claims), `"news"` (theme/sector-level news — **this is how theme news gets tested, not `get_news_synthesis`**, which is symbol-only and belongs to Phase 3) | Layer 1–4 assumption testing, one call per (market × component) |
 
 Fire every (market × component) combination simultaneously — these are independent per
 `_parallax/parallax-conventions.md` §3. A thesis touching 2 markets across 3 components is 6
@@ -47,6 +75,33 @@ For each layer-1–4 assumption in the Assumption Map, read the relevant `macro_
 predates today, surface that `report_date` in **Confidence & Caveats** — the same staleness
 discipline Phase 3 applies to news cards. A classification built on a two-week-old macro read is
 still valid, but the reader must be able to see how old the signal behind it is.
+
+## Cross-component & tag/narrative consistency
+
+`macro_analyst` components are generated semi-independently, so two components of the *same*
+`report_date` can disagree on the same figure (e.g., `macro_indicators` citing one payrolls print
+while `factors` cites another), and `get_telemetry`'s single `regime_tag` can diverge from its own
+`commentary.headline`/`mechanism`. When reads conflict:
+
+- **Classify on the direction the sources agree on, not the disputed level.** If both point to a
+  softening labor market but disagree on the exact print, the *direction* is the
+  Supported/Contradicted signal; the specific number is not.
+- **Prefer the narrative mechanism over a single summary tag** when `get_telemetry`'s `regime_tag`
+  and its `commentary` diverge — a one-word tag ("Broad risk-on") compresses away nuance the
+  mechanism ("mixed_rotation", "concentrated deleveraging") preserves.
+- **Surface the discrepancy in Confidence & Caveats**, with both values, so the reader sees the
+  conflict rather than a falsely precise single figure.
+
+Never resolve a conflict by silently picking the number that better fits the thesis.
+
+## Point-in-time reads vs. multi-period claims
+
+A macro read is a *snapshot*; a thesis claim is often a *trajectory* ("inflation decelerating for
+three straight quarters", "margins expanding all year"). `macro_analyst` tests the current-state
+**edge** of such a claim, not its full history. Classify on that edge — a current re-acceleration
+Contradicts a "still decelerating" claim — but state in the break condition (and in Confidence &
+Caveats) that the multi-period trajectory itself is not directly verified by a point-in-time read.
+Do not present a snapshot as if it confirmed the whole trend.
 
 ## The stress step
 
