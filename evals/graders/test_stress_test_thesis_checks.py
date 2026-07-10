@@ -149,6 +149,26 @@ def test_hype_meter_light_green_for_high_label():
     assert _results(high)["hype_meter_light"] is True
 
 
+def test_hype_meter_light_green_when_sibling_level_named_in_prose():
+    # Regression (live-eval finding): a reading may explain itself against a sibling
+    # level on the same line ("… it is not 🔴 High …") — only the label's own bound
+    # glyph is graded, so the negated 🔴 must NOT trip the check.
+    prose = GOLDEN.replace(
+        "🟡 Elevated — narrative fallacy: the \"macro shift\" story carries the case past a falsifiable step, though the core macro premise stays testable.",
+        "🟡 Elevated — confirmation bias; it is not 🔴 High because the claims stay falsifiable.",
+    )
+    assert _results(prose)["hype_meter_light"] is True
+
+
+def test_tldr_strength_light_green_when_sibling_level_named_in_prose():
+    # Same regression on the TL;DR strength line.
+    prose = GOLDEN.replace(
+        "- Assumption Strength: 🔴 Weak — the keystone macro premise is Contradicted.",
+        "- Assumption Strength: 🔴 Weak — far from 🟢 Strong; the keystone premise is Contradicted.",
+    )
+    assert _results(prose)["tldr_strength_light"] is True
+
+
 def test_hype_meter_light_vacuous_when_no_section():
     # A render without the Bias & Conviction Check section must not fail this check.
     no_sec = GOLDEN.replace(

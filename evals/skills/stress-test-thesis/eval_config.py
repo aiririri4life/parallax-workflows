@@ -259,48 +259,51 @@ def _c_read_time_marker(t, spec) -> Check:
 _STRENGTH_LIGHT = {"weak": "🔴", "mixed": "🟡", "strong": "🟢"}
 
 
+def _glyph_binding_ok(name: str, line, mapping: dict) -> Check:
+    """Verify the traffic-light glyph *bound to the reading's label* is the correct one.
+
+    Binds glyph→label by ADJACENCY (`<glyph> <Label>`, tolerating markdown/whitespace),
+    so a line may legitimately name a sibling level in prose (e.g. a reading of
+    "🟡 Elevated" that adds "… it is not 🔴 High") without tripping — only the label's own
+    leading glyph is graded, not every glyph on the line. Vacuous when the line is absent
+    or carries no level word (a non-standard render). Discovered via live eval: the old
+    "any sibling glyph anywhere on the line" rule false-positived on natural report prose."""
+    if line is None:
+        return Check(name, True, "no reading line")
+    low = line.lower()
+    if not any(re.search(rf"\b{w}\b", low) for w in mapping):
+        return Check(name, True, "no label on line")
+    glyphs = "".join(mapping.values())
+    m = re.search(rf"([{glyphs}])\s*\**\s*\b(" + "|".join(mapping) + r")\b", low)
+    if m is None:
+        return Check(name, False, "label present but no glyph bound to it")
+    glyph, label = m.group(1), m.group(2)
+    ok = mapping[label] == glyph
+    return Check(name, ok, f"binding={glyph} {label} expected={mapping[label]}")
+
+
 def _c_tldr_strength_light(t, spec) -> Check:
-    """The TL;DR's Assumption Strength label carries a matching traffic-light glyph
+    """The TL;DR's Assumption Strength label wears its matching traffic-light glyph
     (Weak→🔴, Mixed→🟡, Strong→🟢) — a standard-render visual cue for argument strength.
-    Scoped to the TL;DR line naming the strength: the correct light must be present and
-    no mismatched light (a different label's glyph) may sit on that line. Vacuous only
-    when no strength label appears in the TL;DR (e.g. a non-standard render)."""
+    Glyph is bound to the label by adjacency (see _glyph_binding_ok). Vacuous only when
+    no strength label appears in the TL;DR (e.g. a non-standard render)."""
     tldr = _section_text(t.final_prose, "TL;DR", spec.section_labels)
     line = next((l for l in tldr.splitlines() if "assumption strength" in l.lower()), None)
-    if line is None:
-        return Check("tldr_strength_light", True, "no assumption-strength line in TL;DR")
-    low = line.lower()
-    label = next((w for w in ("weak", "mixed", "strong") if re.search(rf"\b{w}\b", low)), None)
-    if label is None:
-        return Check("tldr_strength_light", True, "no strength label on line")
-    want = _STRENGTH_LIGHT[label]
-    wrong = sorted(e for lbl, e in _STRENGTH_LIGHT.items() if lbl != label and e in line)
-    ok = want in line and not wrong
-    return Check("tldr_strength_light", ok, f"label={label} want={want} present={want in line} wrong_lights={wrong}")
+    return _glyph_binding_ok("tldr_strength_light", line, _STRENGTH_LIGHT)
 
 
 _HYPE_LIGHT = {"low": "🟢", "elevated": "🟡", "high": "🔴"}
 
 
 def _c_hype_meter_light(t, spec) -> Check:
-    """The Bias & Conviction Check ("hype meter") carries a matching traffic-light glyph
-    (Low→🟢, Elevated→🟡, High→🔴) on its reading line. Same consistency discipline as
-    tldr_strength_light: the correct light must be present and no other level's glyph may
-    sit on that line. Vacuous when no hype reading is rendered — the section is not part of
-    the always-required render, so a report without it must not fail this check."""
+    """The Bias & Conviction Check ("hype meter") wears its matching glyph (Low→🟢,
+    Elevated→🟡, High→🔴) bound to the reading's own label by adjacency — so a reading may
+    explain itself against a sibling level ("… not 🔴 High") without tripping. Vacuous when
+    no hype reading is rendered (the section may be absent on a non-standard render)."""
     sec = _section_text(t.final_prose, "Bias & Conviction Check", spec.section_labels)
     line = next((l for l in sec.splitlines()
                  if re.search(r"\b(low|elevated|high)\b", l, re.I)), None)
-    if line is None:
-        return Check("hype_meter_light", True, "no hype reading line in Bias & Conviction Check")
-    low = line.lower()
-    label = next((w for w in ("low", "elevated", "high") if re.search(rf"\b{w}\b", low)), None)
-    if label is None:
-        return Check("hype_meter_light", True, "no hype label on line")
-    want = _HYPE_LIGHT[label]
-    wrong = sorted(e for lbl, e in _HYPE_LIGHT.items() if lbl != label and e in line)
-    ok = want in line and not wrong
-    return Check("hype_meter_light", ok, f"label={label} want={want} present={want in line} wrong_lights={wrong}")
+    return _glyph_binding_ok("hype_meter_light", line, _HYPE_LIGHT)
 
 
 _NO_HALLUC = next(c for c in CRITERIA if c["id"] == "no_hallucinated_data")  # COPIED
