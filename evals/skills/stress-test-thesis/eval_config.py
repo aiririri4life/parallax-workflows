@@ -68,15 +68,32 @@ _SECTION_LABELS = [
 _LAYER_KEYWORDS = ["macro", "sector", "theme", "position", "implicit", "structural", "holder"]
 
 
+# Shared _REC_PATTERNS catches only FORMAL rating tokens ("strong buy",
+# "rating: buy"). This skill's whole premise is that it never issues a directive,
+# so the verdict guard is stricter here: it also catches casual imperatives
+# ("you should buy this now", "we recommend buying"). Patterns are kept narrow to
+# avoid tripping on legitimate market vocabulary a verdict may use — "buy-side
+# flows", "a sell-off", "sell-side targets", "the thesis holds", "hold through
+# the drawdown" must all pass, so bare buy/sell/hold tokens are NOT matched.
+_VERDICT_REC_EXTRA = [
+    r"\byou should (buy|sell|hold|avoid|short|trim|add)\b",
+    r"\b(buy|sell|short) (this|it|these|them|now|here)\b",
+    r"\bwe (recommend|advise|suggest) (buying|selling|holding|you)\b",
+    r"\bmy recommendation is\b",
+]
+_VERDICT_REC_PATTERNS = _REC_PATTERNS + _VERDICT_REC_EXTRA
+
+
 def _c_verdict_no_rec(t, spec) -> Check:
     """No buy/sell/hold directive in the verdict sections — this skill maps risk in
-    an argument, it does not recommend. Analogue of should-i-buy's bottom_line_no_rec."""
+    an argument, it does not recommend. Stricter than should-i-buy's
+    bottom_line_no_rec: catches casual imperatives, not just formal rating tokens."""
     text = (
         _section_text(t.final_prose, "World Verdict", spec.section_labels)
         + "\n"
         + _section_text(t.final_prose, "Client-Conditioned Verdict", spec.section_labels)
     )
-    hit = next((p for p in _REC_PATTERNS if re.search(p, text, re.I)), None)
+    hit = next((p for p in _VERDICT_REC_PATTERNS if re.search(p, text, re.I)), None)
     return Check("verdict_no_rec", hit is None, f"rec_token_in_verdict={hit}")
 
 

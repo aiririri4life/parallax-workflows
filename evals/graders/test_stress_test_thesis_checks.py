@@ -1,0 +1,177 @@
+"""Unit tests for the stress-test-thesis eval spec's skill-specific checks
+(verdict_no_rec, assumption_map_layered, break_condition_fields, read_time_marker).
+Red/green before any live spend. Mirrors the other per-skill test files.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from eval_spec import load_spec  # noqa: E402
+from tier1_structural import grade_tier1  # noqa: E402
+from transcript import Transcript  # noqa: E402
+
+SPEC = load_spec("stress-test-thesis")
+
+
+def _results(prose: str) -> dict:
+    t = Transcript(final_prose=prose)
+    return {c.name: c.passed for c in grade_tier1(t, SPEC)}
+
+
+GOLDEN = """~4 min read
+
+## TL;DR
+- Assumption Strength: Weak — the keystone macro premise is Contradicted.
+- Rates the argument, not the security.
+
+## Thesis Restatement
+A macro-led long thesis: rate cuts re-rate long-duration growth.
+
+## Assumption Map
+| id | layer | claim | criticality | testability |
+|---|---|---|---|---|
+| macro-1 | 1 (macro) | Fed cutting | high | direct |
+| theme-1 | 2 (sector/theme) | growth outperforms value | high | partial |
+| implicit-1 | 4 (structural) | multiples re-rate | high | partial |
+| holder-1 | 5 (holder) | can hold through the window | — | needs-client-profile |
+
+## Pass 1 — Load-Bearing Vulnerabilities
+macro-1 is load-bearing and Contradicted.
+
+## Assumption-by-Assumption
+| id | status | break_condition | magnitude | time_to_play_out |
+|---|---|---|---|---|
+| macro-1 | Contradicted | Fed holds instead of cutting | full regime turn | multi-quarter |
+| theme-1 | Supported | rotation stalls | 25bp surprise | weeks |
+| macro-9 | Unconfirmed | — | — | — |
+
+## World Verdict
+Assumption Strength: Weak. The chain fails at the entry premise.
+
+## What to Watch
+An easing pivot; curve re-steepening.
+
+## Confidence & Caveats
+Macro read dated 2026-06-24; two weeks stale.
+
+---
+This analysis was AI-interaction assisted. It is informational analysis, not investment advice.
+"""
+
+
+def test_golden_passes_every_check():
+    res = _results(GOLDEN)
+    assert all(res.values()), [n for n, p in res.items() if not p]
+
+
+# --- read_time_marker (NEW) -----------------------------------------------
+
+
+def test_read_time_marker_red_when_absent():
+    no_marker = GOLDEN.replace("~4 min read", "Stress-Test Report")
+    assert _results(no_marker)["read_time_marker"] is False
+
+
+def test_read_time_marker_tolerates_spacing():
+    assert _results(GOLDEN.replace("~4 min read", "~ 12  min read"))["read_time_marker"] is True
+
+
+# --- TL;DR is a required section (standard render) --------------------------
+
+
+def test_tldr_required():
+    no_tldr = GOLDEN.replace("## TL;DR", "## Summary")
+    assert _results(no_tldr)["sections_present"] is False
+
+
+# --- assumption_map_layered (NEW) ------------------------------------------
+
+
+def test_assumption_map_layered_red_when_flat():
+    flat = GOLDEN.replace(
+        "| macro-1 | 1 (macro) | Fed cutting | high | direct |\n"
+        "| theme-1 | 2 (sector/theme) | growth outperforms value | high | partial |\n"
+        "| implicit-1 | 4 (structural) | multiples re-rate | high | partial |\n"
+        "| holder-1 | 5 (holder) | can hold through the window | — | needs-client-profile |",
+        "| a-1 | 1 | Fed cutting | high | direct |\n"
+        "| a-2 | 2 | growth outperforms | high | partial |",
+    )
+    assert _results(flat)["assumption_map_layered"] is False
+
+
+def test_assumption_map_layered_ignores_stray_prose_keyword():
+    # A layer keyword in surrounding prose (not the table cells) must not by
+    # itself satisfy the check — the check is scoped to the id/layer columns.
+    stray = GOLDEN.replace(
+        "| macro-1 | 1 (macro) | Fed cutting | high | direct |\n"
+        "| theme-1 | 2 (sector/theme) | growth outperforms value | high | partial |\n"
+        "| implicit-1 | 4 (structural) | multiples re-rate | high | partial |\n"
+        "| holder-1 | 5 (holder) | can hold through the window | — | needs-client-profile |",
+        "| a-1 | 1 | Fed cutting | high | direct |",
+    )
+    stray = stray.replace(
+        "## Thesis Restatement\nA macro-led long thesis: rate cuts re-rate long-duration growth.",
+        "## Thesis Restatement\nA macro sector theme holder position implicit backdrop.",
+    )
+    assert _results(stray)["assumption_map_layered"] is False
+
+
+# --- break_condition_fields (NEW) ------------------------------------------
+
+
+def test_break_condition_fields_red_when_magnitude_missing():
+    missing = GOLDEN.replace(
+        "| macro-1 | Contradicted | Fed holds instead of cutting | full regime turn | multi-quarter |",
+        "| macro-1 | Contradicted | Fed holds instead of cutting | — | multi-quarter |",
+    )
+    assert _results(missing)["break_condition_fields"] is False
+
+
+def test_break_condition_fields_red_when_time_missing():
+    missing = GOLDEN.replace(
+        "| theme-1 | Supported | rotation stalls | 25bp surprise | weeks |",
+        "| theme-1 | Supported | rotation stalls | 25bp surprise | |",
+    )
+    assert _results(missing)["break_condition_fields"] is False
+
+
+def test_break_condition_fields_exempts_unconfirmed():
+    # An Unconfirmed row with empty magnitude/time is legitimate — no break
+    # condition to size. The GOLDEN already has one; it must not trip the check.
+    assert _results(GOLDEN)["break_condition_fields"] is True
+
+
+# --- verdict_no_rec (hardened: casual imperatives, not just formal tokens) --
+
+
+def test_verdict_no_rec_red_on_casual_imperative():
+    rec = GOLDEN.replace("The chain fails at the entry premise.", "You should buy this now.")
+    assert _results(rec)["verdict_no_rec"] is False
+
+
+def test_verdict_no_rec_red_on_formal_rating_token():
+    rec = GOLDEN.replace("The chain fails at the entry premise.", "Rating: buy.")
+    assert _results(rec)["verdict_no_rec"] is False
+
+
+def test_verdict_no_rec_red_on_we_recommend():
+    rec = GOLDEN.replace("The chain fails at the entry premise.", "We recommend buying the basket.")
+    assert _results(rec)["verdict_no_rec"] is False
+
+
+def test_verdict_no_rec_green_on_legit_market_vocab():
+    # Legitimate market vocabulary a verdict may use must NOT trip the guard.
+    for phrase in [
+        "Institutional buy-side flows keep coming.",
+        "A sharp sell-off would flip macro-2.",
+        "Sell-side targets sit modestly above spot.",
+        "The thesis holds only if the curve steepens.",
+        "The holder can hold through the drawdown.",
+        "Buying pressure has not materialized.",
+    ]:
+        prose = GOLDEN.replace("The chain fails at the entry premise.", phrase)
+        assert _results(prose)["verdict_no_rec"] is True, phrase
