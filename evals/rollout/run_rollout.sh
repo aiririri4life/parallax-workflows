@@ -46,9 +46,21 @@ echo "[rollout] ~24 Parallax tokens — $PROMPT (label=$LABEL)" >&2
 MODEL_FLAG=()
 [ -n "$TARGET_MODEL" ] && MODEL_FLAG=(--model "$TARGET_MODEL")
 
+# Live-connector flags (CI / live-eval use). All optional — unset leaves behavior
+# unchanged, so existing should-i-buy callers are unaffected. See evals/rollout/README.md.
+#   MCP_CONFIG    — path(s) to a .mcp.json defining the Parallax server (--mcp-config)
+#   STRICT_MCP    — non-empty => --strict-mcp-config (ONLY the supplied servers load: reproducible)
+#   ALLOWED_TOOLS — tool allowlist so a non-interactive run never stalls on a permission
+#                   prompt (e.g. "mcp__claude_ai_Parallax__*")
+EXTRA_FLAGS=()
+[ -n "${MCP_CONFIG:-}" ]    && EXTRA_FLAGS+=(--mcp-config ${MCP_CONFIG})
+[ -n "${STRICT_MCP:-}" ]    && EXTRA_FLAGS+=(--strict-mcp-config)
+[ -n "${ALLOWED_TOOLS:-}" ] && EXTRA_FLAGS+=(--allowedTools ${ALLOWED_TOOLS})
+
 claude -p "$PROMPT" \
   --output-format stream-json --verbose \
   ${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"} \
+  ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"} \
   < /dev/null > "$OUT"
 
 echo "$OUT"
