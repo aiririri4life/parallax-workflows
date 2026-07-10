@@ -40,6 +40,17 @@ are the reliable ETF surface; asset-class proxies are not.
 only through their *equity* expressions (e.g. crypto-adjacent or commodity-producer equities), which
 are then tested as ordinary layer-3 positions in Phase 3, never as the underlying asset.
 
+**Disclose coverage early — the Coverage Notice.** The `testability` of every assumption is known at
+Phase 1 (`assumption-decomposition.md`), so the coverage picture exists before any deep analysis runs.
+Surface it **up front**, as the **Coverage Notice** rendered right under Thesis Restatement (SKILL.md
+Output Format), classifying each leg **full** (scored equity / broad equity-country ETF / country
+macro) · **partial** (rates or FX regime read only — instrument not scored) · **out-of-scope**
+(crypto / options / futures / spot commodities / private, reachable only via equity expressions). If a
+thesis is largely partial or out-of-scope — e.g. a pure FX or single-bond call, or a crypto thesis with
+no equity expression — the reader must learn that at the top, not infer it from a page of Unconfirmed
+rows at the end. This is honesty about resolution, not a refusal to run: a partial-coverage thesis is
+still analyzed as far as the country-macro read allows, with the boundary stated.
+
 *(Coverage last live-probed 2026-07-04 against the connected MCP; re-probe if Parallax announces new
 asset-class support.)*
 

@@ -213,14 +213,53 @@ that role most needs. It changes which optional features lead — never the anal
 | `research_analyst` | `deep` verbosity, per-assumption rationale, peer detail | due-diligence reader; wants the full reasoning chain |
 | `engineering` / `embedder` | **`--json`** structured output by default | consuming the payload in a harness, not reading prose |
 
+**Language register — the words, not just which sections lead.** Role also sets the default prose
+register, so the same finding reads differently for a different objective. This is presentation, not
+analysis:
+
+| Register | Roles | Reads like |
+|---|---|---|
+| **Plain-English** | `individual`, `rm`, `wealth_advisor` | short sentences; taxonomy words (`layer 4`, `criticality`, `base_severity`) removed or translated; each fragile point becomes "the idea leans on X; right now the data does/doesn't back it; it stops working if Y." An individual reader wants clearly-defined plain language, not the jargon. |
+| **Full-detail** | `fund_manager`, `research_analyst`, `engineering` | the complete factor/criticality/layer vocabulary, per-assumption rationale, the nitty-gritty kept in — this reader *wants* the mechanism, not a simplification. |
+
+The register changes wording only: a plain-English render of a `Contradicted` assumption is still
+Contradicted, just in plainer words — same statuses, same caveats, same disclaimer. It is the §6
+"Client-facing plain-language" translation discipline, applied by default to the whole report for the
+reader-facing roles rather than only in an export block. Absent role → `standard` register (neither
+stripped or maximally verbose).
+
 Hard rules (same spirit as every mode above):
 
-- **Role tailors which optional features surface by default — nothing else.** It never changes a
-  status, skips Phase 0, drops the disclaimer or AI disclosure, or turns a risk observation into
-  advice. Every feature stays available on request regardless of role.
+- **Role tailors which optional features surface by default and the language register — nothing
+  else.** It never changes a status, skips Phase 0, drops the disclaimer or AI disclosure, or turns a
+  risk observation into advice. Every feature stays available on request regardless of role.
 - **Role is not the `client_profile`.** For an RM/advisor the analyzed holder is their *client*, whose
   profile is supplied separately; for an `individual` the operator and the holder coincide. A role
   with no `client_profile` still runs Pass 1 only.
 - Unknown/absent role → no tailoring; run the standard defaults. Ask for it via the clickable
   questionnaire (`client-conditioning.md`, "Collecting the profile interactively") when it would
   change which outputs you lead with — but never block the run waiting for it.
+
+## 10. Follow-up questions on the conclusion (in-chat)
+
+After the report, invite the reader to ask follow-up questions on the conclusion — "why is `macro-1`
+the load-bearing one?", "what would flip it to Strong?", "walk me through the holder flag", "which leg
+is Parallax weakest on?". This is the natural chat form of the skill; it needs no new mode, only these
+rules:
+
+- **Answer from the records already produced.** A follow-up re-reads the Phase 2–5 records this run
+  generated — it does **not** re-run tools or re-derive a status, because re-deriving risks drift
+  against the numbers already shown to the reader. Re-fire a live read **only** when the question
+  genuinely needs data this run didn't fetch (a new ticker, a market not queried, a fresh read on a
+  Unconfirmed leg), and say so explicitly when you do.
+- **Every invariant travels into the answer.** A follow-up that asks for a call — "so should I buy?",
+  "is this a good position for me?" — gets the same no-recommendation framing as the report, not a
+  softened answer because the exchange is now conversational. The Pass-1/Pass-2 boundary, the "rates
+  the argument, not the security" framing, and the disclaimer all still hold in a follow-up.
+- **Nothing persists.** Follow-ups live in the current session only; the skill writes nothing and
+  remembers nothing across sessions. A "compare to last week" follow-up routes through the §8
+  decay-compare input path (the caller supplies the prior JSON) — it is not a stored state the skill
+  reaches for.
+- When a follow-up outgrows the existing records — a genuinely new thesis leg, a new name, a different
+  layer to test — offer a fresh scoped run rather than stretching an in-place answer past what the
+  run's reads actually cover.

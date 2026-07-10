@@ -49,6 +49,7 @@ _REQUIRED_SECTIONS = [
 _SECTION_LABELS = [
     "TL;DR",
     "Thesis Restatement",
+    "Coverage Notice",                   # early coverage disclosure (full/partial/out-of-scope)
     "Client Profile Summary",            # profile-only
     "Assumption Map",
     "Pass 1 — Load-Bearing Vulnerabilities",
@@ -60,6 +61,7 @@ _SECTION_LABELS = [
     "Pass 2 — Client-Conditioned Vulnerabilities",   # profile-only
     "Suitability-Relevant Flags",        # profile-only
     "Client-Conditioned Verdict",        # profile-only
+    "Bias & Conviction Check",           # the "hype meter" — argument-language bias read
     "What to Watch",
     "What Changed",                      # decay-compare only (prior-run supplied)
     "Confidence & Caveats",
@@ -275,6 +277,30 @@ def _c_tldr_strength_light(t, spec) -> Check:
     return Check("tldr_strength_light", ok, f"label={label} want={want} present={want in line} wrong_lights={wrong}")
 
 
+_HYPE_LIGHT = {"low": "🟢", "elevated": "🟡", "high": "🔴"}
+
+
+def _c_hype_meter_light(t, spec) -> Check:
+    """The Bias & Conviction Check ("hype meter") carries a matching traffic-light glyph
+    (Low→🟢, Elevated→🟡, High→🔴) on its reading line. Same consistency discipline as
+    tldr_strength_light: the correct light must be present and no other level's glyph may
+    sit on that line. Vacuous when no hype reading is rendered — the section is not part of
+    the always-required render, so a report without it must not fail this check."""
+    sec = _section_text(t.final_prose, "Bias & Conviction Check", spec.section_labels)
+    line = next((l for l in sec.splitlines()
+                 if re.search(r"\b(low|elevated|high)\b", l, re.I)), None)
+    if line is None:
+        return Check("hype_meter_light", True, "no hype reading line in Bias & Conviction Check")
+    low = line.lower()
+    label = next((w for w in ("low", "elevated", "high") if re.search(rf"\b{w}\b", low)), None)
+    if label is None:
+        return Check("hype_meter_light", True, "no hype label on line")
+    want = _HYPE_LIGHT[label]
+    wrong = sorted(e for lbl, e in _HYPE_LIGHT.items() if lbl != label and e in line)
+    ok = want in line and not wrong
+    return Check("hype_meter_light", ok, f"label={label} want={want} present={want in line} wrong_lights={wrong}")
+
+
 _NO_HALLUC = next(c for c in CRITERIA if c["id"] == "no_hallucinated_data")  # COPIED
 
 SPEC = EvalSpec(
@@ -294,6 +320,7 @@ SPEC = EvalSpec(
         "read_time_marker",            # NEW (standard-render ~N min read marker)
         "json_no_rec",                 # NEW (structured payload carries no signal key)
         "tldr_strength_light",         # NEW (TL;DR strength carries matching 🔴/🟡/🟢 glyph)
+        "hype_meter_light",            # NEW (Bias & Conviction "hype meter" glyph consistency)
         "orchestrator_length",         # GENERIC
     ],
     extra_checks={
@@ -303,6 +330,7 @@ SPEC = EvalSpec(
         "read_time_marker": _c_read_time_marker,
         "json_no_rec": _c_json_no_rec,
         "tldr_strength_light": _c_tldr_strength_light,
+        "hype_meter_light": _c_hype_meter_light,
     },
     tier2_criteria=[
         _NO_HALLUC,  # COPIED

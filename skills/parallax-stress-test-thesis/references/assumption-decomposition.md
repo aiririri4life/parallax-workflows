@@ -71,6 +71,58 @@ it surfaced by asking "what has to stay true for 'lower discount rates' to reach
 outperforms'?" `holder-1` gets a row with no status because Pass 1 can't test it; if a profile
 arrives, Phase 5 tests it and re-weights the others' severity — it never reclassifies `macro-1`–`implicit-1`.
 
+## Bias & conviction (hype) scan
+
+Alongside the layered decomposition, read the thesis text once more for **how it argues**, not just
+what it claims — this produces the report's **Bias & Conviction Check** ("hype meter"). It is a
+language read, not a data call: it scores how much the argument rests on **conviction / hype
+language** versus falsifiable, hedged, evidenced claims. Signals that push the reading hotter:
+
+- **Superlatives / absolutes** — "world-class", "guaranteed", "can't lose", "massive", "obvious",
+  "everyone knows", "no-brainer".
+- **Certainty with no break condition** — claims stated as fact that the author never made
+  falsifiable. A thesis whose high-criticality layer-4 preconditions are all unstated reads hotter.
+- **Narrative / authority substituting for evidence** — "smart money is doing X", "the story is",
+  guru appeals, momentum-as-proof ("it keeps going up, so it will keep going up").
+- **One-sidedness** — no acknowledged bear case, no disconfirming evidence entertained.
+
+The mapping reuses the traffic-light grammar (and, like every light in this skill, is a severity cue,
+never a trade signal):
+
+| Reading | Glyph | What it means |
+|---|---|---|
+| **Low** | 🟢 | Evidence-led and hedged: claims are falsifiable, a bear case is acknowledged, few superlatives. |
+| **Elevated** | 🟡 | Some unhedged conviction or narrative reliance, but a testable core remains. |
+| **High** | 🔴 | Heavy hype / superlatives, few falsifiable conditions, no bear case — conviction is doing the work evidence should. |
+
+**Name the bias, don't just rate it.** The reading is not only a colour — it names *which* cognitive
+bias the language most exhibits, in a word or two, with a one-clause why. Map the signals above to the
+specific bias:
+
+| Bias | Tell in the thesis language |
+|---|---|
+| **Confirmation bias** | only supporting evidence cited; no bear case or disconfirming data entertained |
+| **Narrative fallacy** | a compelling story ("major macro shift", "the start of X") carries the case in place of a falsifiable step |
+| **Overconfidence** | absolutes and certainty — "guaranteed", "can't lose", "obvious" — with no stated break condition |
+| **Recency bias** | a recent move extrapolated forward ("it keeps going up", "the last three prints") as if it must continue |
+| **Herding / authority bias** | "smart money", a named guru, or "everyone's buying" standing in for the analysis |
+| **Anchoring** | fixation on one number or level (an entry price, a prior high) framing the whole case |
+| **Loss aversion / sunk cost** | holding or doubling the thesis because of what's already committed, not the forward case |
+
+State the one or two biases that dominate, with a brief why, e.g. "🟡 Elevated — *narrative fallacy*:
+the 'macro shift' story does the work a falsifiable step should." If the language is clean, say so
+("🟢 Low — no dominant bias; claims are hedged and falsifiable"). Keep it to the label + the bias
+name(s) + one clause — name the bias, give the why, don't lecture.
+
+**Hard framing — this rates the argument's *language*, not its correctness.** A 🔴 reading does
+**not** mean the thesis is wrong (a hyped thesis can still be right) and 🟢 does not mean it is right.
+It surfaces the author's own behavioral bias — confirmation bias, narrative fallacy, overconfidence —
+so the reader can see how much of the case is conviction versus data. It is **never** a trade signal,
+never gates the report, and is a **separate axis from Assumption Strength** (which rates the
+*evidence* behind the claims; this rates the *rhetoric* around them — a thesis can be 🔴 hype and 🟢
+Strong at once, or the reverse). Most relevant to the personal / holder framing: it is the reader's
+own bias made visible. Keep it to one line plus a sentence of why; do not moralize.
+
 ## Extraction quality gate
 
 Before moving to Phase 2, **play the Assumption Map back to the user** as a table (id, layer,

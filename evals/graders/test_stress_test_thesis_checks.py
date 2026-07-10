@@ -55,6 +55,9 @@ Assumption Strength: Weak. The chain fails at the entry premise.
 ## What to Watch
 An easing pivot; curve re-steepening.
 
+## Bias & Conviction Check
+🟡 Elevated — narrative fallacy: the "macro shift" story carries the case past a falsifiable step, though the core macro premise stays testable.
+
 ## Confidence & Caveats
 Macro read dated 2026-06-24; two weeks stale.
 
@@ -114,6 +117,43 @@ def test_tldr_strength_light_vacuous_when_no_strength_line():
         "",
     )
     assert _results(no_line)["tldr_strength_light"] is True
+
+
+# --- hype_meter_light (NEW) ------------------------------------------------
+
+
+def test_hype_meter_light_green_on_golden():
+    # GOLDEN's Bias & Conviction Check carries "🟡 Elevated" — the matching glyph.
+    assert _results(GOLDEN)["hype_meter_light"] is True
+
+
+def test_hype_meter_light_red_when_glyph_missing():
+    no_glyph = GOLDEN.replace("🟡 Elevated", "Elevated")
+    assert _results(no_glyph)["hype_meter_light"] is False
+
+
+def test_hype_meter_light_red_on_mismatched_glyph():
+    # Elevated label wearing the High (🔴) light is a contradiction — must trip.
+    mismatched = GOLDEN.replace("🟡 Elevated", "🔴 Elevated")
+    assert _results(mismatched)["hype_meter_light"] is False
+
+
+def test_hype_meter_light_green_for_high_label():
+    high = GOLDEN.replace(
+        "🟡 Elevated — narrative fallacy: the \"macro shift\" story carries the case past a falsifiable step, though the core macro premise stays testable.",
+        "🔴 High — heavy superlatives and no acknowledged bear case.",
+    )
+    assert _results(high)["hype_meter_light"] is True
+
+
+def test_hype_meter_light_vacuous_when_no_section():
+    # A render without the Bias & Conviction Check section must not fail this check.
+    no_sec = GOLDEN.replace(
+        "## Bias & Conviction Check\n"
+        "🟡 Elevated — narrative fallacy: the \"macro shift\" story carries the case past a falsifiable step, though the core macro premise stays testable.\n\n",
+        "",
+    )
+    assert _results(no_sec)["hype_meter_light"] is True
 
 
 # --- TL;DR is a required section (standard render) --------------------------
