@@ -25,7 +25,7 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 - `get_news_synthesis` is symbol-only; theme/sector-level news goes through `macro_analyst(component: "news")`, not this tool.
 - `get_telemetry` is async (~15-30s); `get_assessment` is async (~3min) — fire early, don't block instant-response tool assembly on either.
 - **The core invariant: Pass 2 never rewrites a Pass-1 Supported/Contradicted/Unconfirmed status.** It evaluates the holder-dependent layer and re-weights severity only. See `references/client-conditioning.md` for the mechanical reason this holds.
-- **House-view cross-check is optional, read-only, and flag-only** — JIT-load `references/house-view-check.md` only if an active view exists at `~/.parallax/active-house-view/`. It flags where the thesis's directional claims disagree with the firm's positioning; it **never** applies tilts, re-ranks, or rewrites a Pass-1 status (the view is opinion, the status is evidence). It deliberately does **not** write the `loader.md` §7 consume-audit entry — see the reference for that documented no-write variance. No active view → render nothing.
+- **House-view cross-check is optional, read-only, and flag-only** — JIT-load `references/house-view-check.md` only if an active view exists at `~/.parallax/active-house-view/`. It flags where the thesis's directional claims disagree with the firm's positioning; it **never** applies tilts, re-ranks, or rewrites a Pass-1 status (the view is opinion, the status is evidence). It deliberately does **not** write the `loader.md` §7 consume-audit entry by default — see the reference for that documented no-write variance and the opt-in `--house-view-audit` flag. No active view → render nothing. (Want the view *applied* — tilts, re-ranking — not just flagged? That is `/parallax-portfolio-builder`; this skill stays read-only by design.)
 - **Book mode is opt-in by input shape** — when >1 thesis is supplied in one run, JIT-load `references/portfolio-aggregation.md` for Phase 6 (cross-thesis concentration). It is pure synthesis over the per-thesis records (no new tool calls, no writes) and **never rewrites a per-thesis status or issues a sizing/allocation call** — it surfaces where separate theses secretly share a load-bearing assumption or break on the same trigger. Single thesis → Phase 6 never runs. This is thesis-book aggregation, NOT portfolio health (`/parallax-portfolio-checkup`) or construction (`/parallax-portfolio-builder`).
 - No persisted state, no writes — `client_profile` lives in-session only, and the house-view cross-check is read-only/unlogged, so this invariant still holds with or without a view.
 
@@ -36,6 +36,9 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 /parallax-stress-test-thesis path/to/memo.pdf
 /parallax-stress-test-thesis "Rotate into crypto-adjacent equities now that the halving cycle plus ETF inflows are re-rating the space" client_profile={"age":27,"horizon":"20+ years","risk_capacity":"high","income_reliance":"accumulating","position_size_pct_networth":0.05,"risk_tolerance":"high"}
 /parallax-stress-test-thesis book.md        # a file (or several inline theses) → per-thesis reports + Phase 6 cross-thesis concentration roll-up
+/parallax-stress-test-thesis "…thesis…" --json                    # structured output for embedding (no prose required)
+/parallax-stress-test-thesis "…thesis…" compare=<prior-run JSON>  # decay-compare: what changed vs. last run (reads today live)
+/parallax-stress-test-thesis "…thesis…" --house-view-audit        # opt in to logging house-view consumption (off by default)
 ```
 
 **Optional XML input form** (equivalent to the inline form above — accept either; a thesis wrapped in
@@ -70,8 +73,18 @@ drop the disclaimer.
   fragility may live in an un-analyzed layer. Layer 5 cannot stand fully alone (its re-weighting
   consumes Pass-1 outputs) — see the reference.
 - **Copy-ready export** — a purpose-tailored fenced block (Email / Quick note / Talking points /
-  Doc), asked via `AskUserQuestion`. The disclaimer + no-recommendation framing travel with every
-  variant; purpose tailors format and length only.
+  Doc / **Client-facing plain-language**), asked via `AskUserQuestion`. The plain-language variant
+  strips the layer/criticality jargon into plain sentences for a non-professional reader
+  (RM/wealth/retail readability) — translating language only. The disclaimer + no-recommendation
+  framing travel with every variant; purpose tailors format and length only.
+- **Structured (JSON) output** — on `--json` / "machine-readable", emit a fenced `json` block
+  mirroring the records (assumption map, statuses, verdict, house-view, book, provenance) for
+  embedding. **No `action`/`rating`/`weight` key ever**; carries `disclaimer_variant` +
+  `not_a_recommendation: true`; no new derivation; still read-only (rendered in-chat, writes nothing).
+- **Decay-compare** — "what changed since last time?": the caller pastes a prior run's JSON (or names
+  the prior statuses) as a **session input** — the skill re-reads today's data live, diffs
+  Assumption Strength / status flips into a **What Changed** section, and writes nothing. This is the
+  no-persistence monitoring loop (state lives with the caller); it pairs with the JSON a run emits.
 
 ## Where artifacts live
 
@@ -174,6 +187,7 @@ survive at every depth and in every export — they are never collapsed away. �
 - **Suitability-Relevant Flags** *(only if profile supplied)* — risk observations only, never a call; each closes with the qualified-professional reminder. **If none fired, render a one-line "No suitability flags fired" rather than omitting the section**, so the reader can see the check ran and nothing escalated (a legitimate, common outcome for a long-horizon/accumulating holder)
 - **Client-Conditioned Verdict** *(only if profile supplied)* — what this means for this investor specifically
 - **What to Watch** (2–3 signals that would confirm or invalidate the thesis; if a profile was supplied, note any that are specifically holder-relevant)
+- **What Changed** *(decay-compare only — a prior-run JSON/statuses were supplied)* — per assumption `prior_status → current_status`, break conditions newly fired/cleared, and the net Assumption Strength move; reads today's data live, reports the drift, recommends nothing. → `references/output-modes.md` §8
 - **Confidence & Caveats** (extraction quality, Unconfirmed/out-of-scope assumptions, data staleness; in single-layer mode, the prominent "layers not tested" warning)
 - **Detail toggle** *(footer line)* — offer `expand` (full per-assumption reasoning at `deep` verbosity) / `collapse` (TL;DR + fragile points only). Re-renders from the same records — never re-runs tools or re-derives statuses. Collapsing never hides a Contradicted/Unconfirmed status or the disclaimer
 - **Copy-ready export** *(offered after the report; on request)* — ask purpose via `AskUserQuestion` (Email / Quick note / Talking points / Doc), then render one fenced block tailored to it. **Every variant carries the disclaimer + no-recommendation framing and any material staleness/Unconfirmed caveat; purpose tailors format and length only, never substance.** Rendered as a copy-out-of-chat block — there is no OS-clipboard write

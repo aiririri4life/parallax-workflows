@@ -21,10 +21,18 @@ profiles and raw thesis text in-session and is architected with **no write path 
 write path, which is exactly the compliance-surface expansion v1 was designed to avoid. So it
 consumes the view in the strictest possible mode: **flag-only, unlogged.**
 
-Accepted limitation: the house-view `audit.jsonl` will **not** record that a stress-test run read
-the view. That is a known, documented gap. Enabling consume-audit logging (full §7 compliance) is a
-scoped, operator-gated future decision — it must be an explicit choice to add a write path, not a
-silent default. Until then, this skill is a **flag-only** consumer.
+Accepted limitation: by default the house-view `audit.jsonl` will **not** record that a stress-test
+run read the view. That is the price of the no-write default.
+
+**Opt-in full §7 compliance (`--house-view-audit`).** An embedder that standardizes on the house-view
+audit trail across all consumers (so every view read is logged) can turn on consume-logging
+explicitly. When — and only when — the caller passes `--house-view-audit` (or sets it in an
+integration config), append the single `loader.md` §6 `consume` entry: `action:"consume"`,
+`applied:false`, `applied_reason:"single-stock consumer (loader.md §7) — stress-test flag-only"`,
+plus `conflicts_count` / `conflicts_summary` from Step 2. This is the **one** write the skill will
+ever make, it is off by default, and it is surfaced to the operator (the disclaimer/preamble notes
+"house-view consumption logged to the active view's audit trail" when it is on) — never silent. The
+default remains flag-only, unlogged.
 
 ## Step 1 — Load and validate (read-only, per loader.md §2)
 
