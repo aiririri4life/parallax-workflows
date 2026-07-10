@@ -13,8 +13,8 @@ and makes NO buy/sell/hold recommendation — the analogue of should-i-buy's
 bottom_line_no_rec is verdict_no_rec here.
 
 The `core.jsonl` tasks are all Pass-1-only (no client_profile). The two-pass
-client-conditioning acceptance test (crypto accumulator vs. retiree, design doc
-§9.5) is deliberately NOT in core: it requires a paired-run assertion (identical
+client-conditioning acceptance test (crypto accumulator vs. retiree) is
+deliberately NOT in core: it requires a paired-run assertion (identical
 Pass-1 statuses across two profiles; divergent client ranking; stronger disclaimer
 variant on the retiree run) that the single-transcript generic engine can't express.
 Keep it as the manual live acceptance test until the harness grows paired-run support.

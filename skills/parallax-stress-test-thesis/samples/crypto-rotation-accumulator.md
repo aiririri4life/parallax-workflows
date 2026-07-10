@@ -1,9 +1,9 @@
 # Sample thesis — crypto rotation, paired client-conditioning acceptance test (1 of 2)
 
-Pairs with `crypto-rotation-retiree.md` — same thesis text, different `client_profile`. Per design
-doc §9.5: Pass-1 statuses must be identical across both runs; the holder-dependent layer and
-client-conditioned ranking must differ; this run (27yo accumulator) should come out less severe
-overall than the retiree run.
+Pairs with `crypto-rotation-retiree.md` — same thesis text, different `client_profile`. Acceptance
+criteria for the pair: Pass-1 statuses must be identical across both runs; the holder-dependent
+layer and client-conditioned ranking must differ; this run (27yo accumulator) should come out less
+severe overall than the retiree run.
 
 ---
 
