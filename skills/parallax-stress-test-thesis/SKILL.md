@@ -8,7 +8,7 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 ## When not to use
 
 - Reacting to a specific news event or market shock against a portfolio → use /parallax-scenario-analysis (that skill also answers to "stress test"/"stress book" vocabulary for event-driven exposure — this skill is for testing the *reasoning* behind a stated argument, not portfolio exposure to an event)
-- Portfolio health check with no accompanying investment argument → use /parallax-portfolio-checkup
+- Portfolio health check with no accompanying investment argument → use /parallax-portfolio-checkup (this skill's book mode aggregates *arguments*, and needs a stated thesis per position — a bare list of holdings with no reasoning is a checkup, not a thesis book)
 - Single-stock deep dive with no stated thesis → use /parallax-deep-dive or /parallax-should-i-buy
 - A formal suitability or compliance determination → not offered by this or any skill in this repo; Pass 2 here is heuristic risk observation, and a qualified professional must make the actual determination
 
@@ -25,8 +25,9 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 - `get_news_synthesis` is symbol-only; theme/sector-level news goes through `macro_analyst(component: "news")`, not this tool.
 - `get_telemetry` is async (~15-30s); `get_assessment` is async (~3min) — fire early, don't block instant-response tool assembly on either.
 - **The core invariant: Pass 2 never rewrites a Pass-1 Supported/Contradicted/Unconfirmed status.** It evaluates the holder-dependent layer and re-weights severity only. See `references/client-conditioning.md` for the mechanical reason this holds.
-- No house-view consumption in v1 (raw `macro_analyst` output only — a deliberate scope cut to keep the compliance surface small; house-view conflict-flagging is a candidate v1.1 addition, not built here).
-- No persisted state, no writes — `client_profile` lives in-session only.
+- **House-view cross-check is optional, read-only, and flag-only** — JIT-load `references/house-view-check.md` only if an active view exists at `~/.parallax/active-house-view/`. It flags where the thesis's directional claims disagree with the firm's positioning; it **never** applies tilts, re-ranks, or rewrites a Pass-1 status (the view is opinion, the status is evidence). It deliberately does **not** write the `loader.md` §7 consume-audit entry — see the reference for that documented no-write variance. No active view → render nothing.
+- **Book mode is opt-in by input shape** — when >1 thesis is supplied in one run, JIT-load `references/portfolio-aggregation.md` for Phase 6 (cross-thesis concentration). It is pure synthesis over the per-thesis records (no new tool calls, no writes) and **never rewrites a per-thesis status or issues a sizing/allocation call** — it surfaces where separate theses secretly share a load-bearing assumption or break on the same trigger. Single thesis → Phase 6 never runs. This is thesis-book aggregation, NOT portfolio health (`/parallax-portfolio-checkup`) or construction (`/parallax-portfolio-builder`).
+- No persisted state, no writes — `client_profile` lives in-session only, and the house-view cross-check is read-only/unlogged, so this invariant still holds with or without a view.
 
 ## Usage
 
@@ -34,6 +35,7 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 /parallax-stress-test-thesis "I like NVDA because AI capex keeps compounding and rate cuts extend the duration trade for growth names"
 /parallax-stress-test-thesis path/to/memo.pdf
 /parallax-stress-test-thesis "Rotate into crypto-adjacent equities now that the halving cycle plus ETF inflows are re-rating the space" client_profile={"age":27,"horizon":"20+ years","risk_capacity":"high","income_reliance":"accumulating","position_size_pct_networth":0.05,"risk_tolerance":"high"}
+/parallax-stress-test-thesis book.md        # a file (or several inline theses) → per-thesis reports + Phase 6 cross-thesis concentration roll-up
 ```
 
 **Optional XML input form** (equivalent to the inline form above — accept either; a thesis wrapped in
@@ -41,10 +43,14 @@ tags is parsed from the tag body, never re-interpreted). Recognize `<thesis_inpu
 (the argument text), `<client_profile>…</client_profile>` (same fields as the `client_profile=` object,
 JSON or key:value), and `<analysis_level>quick|standard|deep</analysis_level>` (a hint only: `deep`
 invites the optional `get_assessment` cross-check in Phase 4, `quick`/absent stays records-only — it
-never gates a phase or short-circuits the run). Unknown tags are ignored, not errors. There is no
-persisted-state / "watcher" import tag — this skill writes nothing and reads no prior-run state.
+never gates a phase or short-circuits the run). **Multiple `<thesis_input>` tags** (or a file/text
+carrying several delimited theses) trigger **book mode**: each thesis gets its own full Pass 1/2, then
+Phase 6 aggregates across them. Unknown tags are ignored, not errors. There is no persisted-state /
+"watcher" import tag — this skill writes nothing and reads no prior-run state.
 
-**Degenerate inputs** (handle before Phase 1 — see `references/assumption-decomposition.md` for detail): tickers with no argument → ask for the *why*; argument with no tickers → run Phases 2 and 4, skip Phase 3 and say so; no `client_profile` → run Pass 1 only, state Pass 2 was skipped for lack of a profile; `client_profile` missing `horizon` or `income_reliance` → ask for those before running Phase 5.
+**Degenerate inputs** (handle before Phase 1 — see `references/assumption-decomposition.md` for detail): tickers with no argument → ask for the *why*; argument with no tickers → run Phases 2 and 4, skip Phase 3 and say so; no `client_profile` → run Pass 1 only, state Pass 2 was skipped for lack of a profile; `client_profile` missing `horizon` or `income_reliance` → ask for those before running Phase 5. In
+book mode, apply these per-thesis rules to each thesis independently; a single supplied `client_profile`
+conditions the whole book (all theses share the one holder).
 
 ## Modes — depth, scope, export
 
@@ -52,9 +58,10 @@ persisted-state / "watcher" import tag — this skill writes nothing and reads n
 controls, never safety switches**: none may skip Phase 0, report a status without a live read, or
 drop the disclaimer.
 
-- **Depth** — `quick` / `standard` (default) / `deep` sets verbosity and whether the optional
-  `get_assessment` cross-check fires. `quick` still runs every mandatory live read — it shortens the
-  prose, it does not skip facts. When interactive and no level was given (via `<analysis_level>` or
+- **Depth** — `quick` / `standard` (default) / `deep` sets verbosity, whether the optional
+  `get_assessment` cross-check fires, and whether the **Run Provenance** footer renders (`deep` or
+  on request only). `quick` still runs every mandatory live read — it shortens the prose, it does not
+  skip facts. When interactive and no level was given (via `<analysis_level>` or
   inline), ask once with a clickable `AskUserQuestion` (Quick note / Standard / Deep dive) — fold it
   into the `client_profile` questionnaire if one is being collected.
 - **Single-layer scope** — if the user asks for one layer only ("just macro", "personal angle
@@ -118,6 +125,14 @@ horizon — holder-independent), and **never paste its output raw** — the word
 model ignores, so extract the three answers and compress them yourself. If it is skipped, errors, or
 times out, use the records-based synthesis rather than gating the report.
 
+#### Phase 4.5 — House-view cross-check *(optional; only if an active view exists)*
+
+→ Load `references/house-view-check.md` **only if** `~/.parallax/active-house-view/view.yaml` is
+present. Validate the view read-only (loader.md §2), surface the required active-view banner, and
+flag where the thesis's own directional claims (macro regime, sector/theme, factor lean) disagree
+with the firm's tilts — **flag only, never apply tilts, never rewrite a Pass-1 status.** This is
+client-invariant (it closes Pass 1). No active view → render nothing and add no caveat.
+
 ### PASS 2 — Client conditioning (what it means for this investor)
 
 Runs **only if a `client_profile` was supplied**.
@@ -128,6 +143,16 @@ Runs **only if a `client_profile` was supplied**.
 Pass-1 break condition's severity (horizon vs. time-to-play-out, risk capacity vs. magnitude,
 income reliance/sequence-of-returns, position size), re-rank Load-Bearing Vulnerabilities, and
 emit suitability-relevant flags. Never rewrites a Pass-1 status.
+
+### Phase 6 — Cross-thesis aggregation *(book mode only; runs only if >1 thesis was supplied)*
+
+→ Load `references/portfolio-aggregation.md`. After every thesis has finished its own Pass 1/2,
+synthesize a book-level concentration read over the per-thesis records: canonicalize assumptions that
+recur across theses, flag concentrated (breadth ≥ 2, high-criticality) Contradicted/Unconfirmed
+premises, group break conditions that fire on the same trigger into correlated single-points-of-
+failure, and give a book-level Assumption Strength that says whether the Weak theses share a root
+cause. **Pure synthesis — no new tool calls, no writes, no sizing/allocation call, and never rewrites
+a per-thesis status.** Single thesis → skip entirely.
 
 ## Output Format
 
@@ -143,6 +168,7 @@ survive at every depth and in every export — they are never collapsed away. �
 - **Assumption-by-Assumption** (table: `id`, `status`, `break_condition`, `magnitude`, `time_to_play_out`)
 - **Position-Level Read** *(omit entirely if no tickers — say so under Thesis Restatement instead)* — direction alignment, peer-relative factor check, macro alignment, news + staleness caveat, per symbol
 - **World Verdict** (Phase 4 records synthesis; `get_assessment` optional cross-check — what has to be true, where it most likely fails). Lead it with an **Assumption Strength** label — `Weak` / `Mixed` / `Strong` — rating how well the load-bearing assumptions are supported by the current reads (Weak = a high-criticality assumption is Contradicted or Unconfirmed; Strong = the load-bearing set is Supported). **This rates the argument's evidential support, not the security — it is explicitly NOT a buy/sell/hold call, a PASS/FAIL grade, or a suitability verdict.** Never render it as a traffic-light gate that halts or short-circuits the report; every section still runs. Optionally annotate each Load-Bearing Vulnerability with the same Weak/Mixed/Strong tag for its own assumption.
+- **House-View Alignment** *(only if an active house view exists at `~/.parallax/active-house-view/`; omit entirely otherwise)* — the required active-view banner plus a single blanket note (via the shared `render_view_conflict` helper) flagging where the thesis's macro/sector/factor claims agree or disagree with the firm's positioning. **Flag only: the view never changes an assumption's Pass-1 status, criticality, or rank** — it is a positioning conflict to resolve at decision time, orthogonal to the evidential read. Client-invariant. → `references/house-view-check.md`
 - **Pass 2 — Holder-Dependent Assumptions** *(only if profile supplied)* — the layer-5 rows, Supported/Contradicted for this person
 - **Pass 2 — Client-Conditioned Vulnerabilities** *(only if profile supplied)* — re-ranked using `client_severity`; state what moved vs. the Pass-1 ranking and why
 - **Suitability-Relevant Flags** *(only if profile supplied)* — risk observations only, never a call; each closes with the qualified-professional reminder. **If none fired, render a one-line "No suitability flags fired" rather than omitting the section**, so the reader can see the check ran and nothing escalated (a legitimate, common outcome for a long-horizon/accumulating holder)
@@ -151,6 +177,9 @@ survive at every depth and in every export — they are never collapsed away. �
 - **Confidence & Caveats** (extraction quality, Unconfirmed/out-of-scope assumptions, data staleness; in single-layer mode, the prominent "layers not tested" warning)
 - **Detail toggle** *(footer line)* — offer `expand` (full per-assumption reasoning at `deep` verbosity) / `collapse` (TL;DR + fragile points only). Re-renders from the same records — never re-runs tools or re-derives statuses. Collapsing never hides a Contradicted/Unconfirmed status or the disclaimer
 - **Copy-ready export** *(offered after the report; on request)* — ask purpose via `AskUserQuestion` (Email / Quick note / Talking points / Doc), then render one fenced block tailored to it. **Every variant carries the disclaimer + no-recommendation framing and any material staleness/Unconfirmed caveat; purpose tailors format and length only, never substance.** Rendered as a copy-out-of-chat block — there is no OS-clipboard write
+- **Run Provenance** *(footer; render at `deep` depth or on request — omit at `quick`/`standard` to avoid bloat)* — a compact, machine-facing inventory that makes the run self-documenting and reviewable, distinct from the prose Confidence & Caveats: (a) thesis fingerprint — a short hash/first-line of the input so two runs can be compared; (b) markets queried and the `macro_analyst` components fired per market; (c) each read's `report_date` and its staleness vs. today; (d) whether the `get_assessment` cross-check fired or the records-based synthesis was used; (e) house-view cross-check status (none / active `view_id`+`version_id` / validation-failed). It **echoes fixed inputs and reads only — it never re-derives a status** and adds no new finding; it is a provenance manifest, not analysis. Do not call it "deterministic" — `get_assessment`, when fired, is not reproducible; the manifest records *what was read*, not a guarantee of byte-identical re-runs
+
+**Book mode (>1 thesis) — additional roll-up after the per-thesis reports** *(omit entirely for a single thesis)* — render each thesis's report first (collapsed to TL;DR + Load-Bearing Vulnerabilities at `quick`/`standard`, expandable), then: **Book Overview** (thesis count + per-thesis Assumption Strength roster); **Shared / Concentrated Assumptions** (table: `canonical_assumption`, `layer`, `# theses`, `max_criticality`, `status`, `member_ids` — concentrated Contradicted/Unconfirmed rows are the headline); **Correlated Break Conditions** (table: `trigger`, `theses_broken`, `common_horizon`, `simultaneous?` — the book's single points of failure); **Book-Level Verdict** (where the book concentrates argument risk, holder-independent, no sizing/recommendation); and **Client-Conditioned Book View** *(profile only)*. The disclaimer + AI-interaction disclosure render **once, at the end of the whole run**, not per thesis. → `references/portfolio-aggregation.md`
 
 **AI-interaction disclosure (always):** Render `parallax-conventions.md §9.2` immediately above the disclaimer below.
 
@@ -162,7 +191,7 @@ recommendation."*
 substitute §9.1):
 
 *"This report includes risk observations conditioned on the client profile supplied in this
-session. It is not financial advice and not a recommendation to buy, sell, or hold any security.
+session. It is not investment advice and not a recommendation to buy, sell, or hold any security.
 The client-conditioned pass is heuristic reasoning over a partial profile, not a calibrated
 suitability model — it does not constitute a formal suitability determination. A suitability
 assessment must be made by a qualified professional based on the individual's complete financial

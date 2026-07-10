@@ -145,6 +145,31 @@ def test_break_condition_fields_exempts_unconfirmed():
     assert _results(GOLDEN)["break_condition_fields"] is True
 
 
+# --- disclaimer wording parity across both variants -------------------------
+# The shared `disclaimer_present_correct` check keys off the literal
+# "not investment advice". The no-profile path renders §9.1 (which carries the
+# token); the stronger profile variant must carry it too, or a profiled run would
+# silently fail the disclaimer gate. These guard that parity.
+
+_STRONGER_VARIANT = (
+    "This report includes risk observations conditioned on the client profile "
+    "supplied in this session. It is not investment advice and not a recommendation "
+    "to buy, sell, or hold any security."
+)
+
+
+def test_stronger_disclaimer_variant_carries_investment_advice_token():
+    assert "not investment advice" in _STRONGER_VARIANT.lower()
+
+
+def test_stronger_disclaimer_variant_passes_shared_check():
+    prose = GOLDEN.replace(
+        "This analysis was AI-interaction assisted. It is informational analysis, not investment advice.",
+        "This analysis was AI-interaction assisted.\n\n" + _STRONGER_VARIANT,
+    )
+    assert _results(prose)["disclaimer_present_correct"] is True
+
+
 # --- verdict_no_rec (hardened: casual imperatives, not just formal tokens) --
 
 

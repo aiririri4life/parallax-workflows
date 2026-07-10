@@ -55,12 +55,18 @@ _SECTION_LABELS = [
     "Assumption-by-Assumption",
     "Position-Level Read",               # ticker-only
     "World Verdict",
+    "House-View Alignment",              # active-view-only (read-only conflict flag)
     "Pass 2 — Holder-Dependent Assumptions",         # profile-only
     "Pass 2 — Client-Conditioned Vulnerabilities",   # profile-only
     "Suitability-Relevant Flags",        # profile-only
     "Client-Conditioned Verdict",        # profile-only
     "What to Watch",
     "Confidence & Caveats",
+    "Book Overview",                     # book-mode only (>1 thesis)
+    "Shared / Concentrated Assumptions", # book-mode only
+    "Correlated Break Conditions",       # book-mode only
+    "Book-Level Verdict",                # book-mode only
+    "Client-Conditioned Book View",      # book-mode + profile only
 ]
 
 # Evidence the five-layer decomposition actually ran: the Assumption Map's `layer`
@@ -199,7 +205,7 @@ SPEC = EvalSpec(
     check_ids=[
         "sections_present",            # GENERIC
         "ai_disclosure_present",       # GENERIC (§9.2 banner, always)
-        "disclaimer_present_correct",  # GENERIC ("not investment advice" — no-profile path renders §9.1)
+        "disclaimer_present_correct",  # GENERIC ("not investment advice" — both the no-profile §9.1 render and the stronger profile variant carry the literal token)
         "verdict_no_rec",              # NEW (analogue of bottom_line_no_rec)
         "assumption_map_layered",      # NEW (five-layer decomposition ran)
         "break_condition_fields",      # NEW (magnitude + time_to_play_out mandatory)
