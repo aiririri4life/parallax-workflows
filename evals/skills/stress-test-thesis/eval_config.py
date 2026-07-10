@@ -37,6 +37,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # section_labels so section-text boundaries resolve, but a no-profile / no-ticker
 # task must still pass.
 _REQUIRED_SECTIONS = [
+    "TL;DR",                             # standard render — leads every report at every depth
     "Thesis Restatement",
     "Assumption Map",
     "Pass 1 — Load-Bearing Vulnerabilities",
@@ -46,6 +47,7 @@ _REQUIRED_SECTIONS = [
     "Confidence & Caveats",
 ]
 _SECTION_LABELS = [
+    "TL;DR",
     "Thesis Restatement",
     "Client Profile Summary",            # profile-only
     "Assumption Map",
@@ -156,6 +158,18 @@ def _c_break_condition_fields(t, spec) -> Check:
     return Check("break_condition_fields", not bad, f"rows_missing_magnitude_or_time={bad}")
 
 
+_READ_TIME_RE = re.compile(r"~\s*\d+\s*min\s+read", re.I)
+
+
+def _c_read_time_marker(t, spec) -> Check:
+    """A `~N min read` estimate leads the report — standard render at every depth
+    per SKILL.md Output Format (bold-starred, never collapsed away). Searched over
+    the whole prose (it's a top-of-report marker, not a titled section)."""
+    m = _READ_TIME_RE.search(t.final_prose or "")
+    return Check("read_time_marker", m is not None,
+                 f"marker={m.group(0) if m else None}")
+
+
 _NO_HALLUC = next(c for c in CRITERIA if c["id"] == "no_hallucinated_data")  # COPIED
 
 SPEC = EvalSpec(
@@ -172,12 +186,14 @@ SPEC = EvalSpec(
         "verdict_no_rec",              # NEW (analogue of bottom_line_no_rec)
         "assumption_map_layered",      # NEW (five-layer decomposition ran)
         "break_condition_fields",      # NEW (magnitude + time_to_play_out mandatory)
+        "read_time_marker",            # NEW (standard-render ~N min read marker)
         "orchestrator_length",         # GENERIC
     ],
     extra_checks={
         "verdict_no_rec": _c_verdict_no_rec,
         "assumption_map_layered": _c_assumption_map_layered,
         "break_condition_fields": _c_break_condition_fields,
+        "read_time_marker": _c_read_time_marker,
     },
     tier2_criteria=[
         _NO_HALLUC,  # COPIED

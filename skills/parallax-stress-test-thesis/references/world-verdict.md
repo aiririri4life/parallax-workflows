@@ -50,6 +50,20 @@ load-bearing, and the most likely failure with its sequence and horizon — all 
 This is also the ranking that Phase 5 re-weights (never overwrites) when a profile is supplied, so
 keep it explicit and ordered.
 
+**Lead the verdict with an `Assumption Strength` label** — `Weak` / `Mixed` / `Strong` — rating how
+well the *load-bearing* assumptions are supported by the current Pass-1 reads:
+
+- **Weak** — at least one high-criticality assumption is `Contradicted` or `Unconfirmed`.
+- **Mixed** — the load-bearing set is partly Supported, partly Contradicted/Unconfirmed, with no
+  single high-criticality failure dominating.
+- **Strong** — the load-bearing set is `Supported`.
+
+This label rates the **argument's evidential support, not the security** — it is explicitly **not** a
+buy/sell/hold call, a PASS/FAIL grade, or a suitability verdict, and it never gates or short-circuits
+the report (every section still runs regardless of the label). It is client-invariant: Phase 5
+re-weights the underlying severity per holder but never restates this Pass-1 label. (See `SKILL.md`
+Output Format for how it renders and the optional per-vulnerability tag.)
+
 ## Default synthesis (records-based) — also the fallback if `get_assessment` is skipped or times out
 
 This is the **primary path**: the Pass-1 findings already live in the structured Phase-2/3 records,
