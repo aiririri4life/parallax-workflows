@@ -25,7 +25,7 @@ def _results(prose: str) -> dict:
 GOLDEN = """~4 min read
 
 ## TL;DR
-- Assumption Strength: Weak — the keystone macro premise is Contradicted.
+- Assumption Strength: 🔴 Weak — the keystone macro premise is Contradicted.
 - Rates the argument, not the security.
 
 ## Thesis Restatement
@@ -78,6 +78,42 @@ def test_read_time_marker_red_when_absent():
 
 def test_read_time_marker_tolerates_spacing():
     assert _results(GOLDEN.replace("~4 min read", "~ 12  min read"))["read_time_marker"] is True
+
+
+# --- tldr_strength_light (NEW) ---------------------------------------------
+
+
+def test_tldr_strength_light_green_on_golden():
+    # GOLDEN carries "🔴 Weak" — the matching glyph for the Weak label.
+    assert _results(GOLDEN)["tldr_strength_light"] is True
+
+
+def test_tldr_strength_light_red_when_glyph_missing():
+    no_glyph = GOLDEN.replace("🔴 Weak", "Weak")
+    assert _results(no_glyph)["tldr_strength_light"] is False
+
+
+def test_tldr_strength_light_red_on_mismatched_glyph():
+    # Weak label with a green light is a contradiction — must trip the check.
+    mismatched = GOLDEN.replace("🔴 Weak", "🟢 Weak")
+    assert _results(mismatched)["tldr_strength_light"] is False
+
+
+def test_tldr_strength_light_green_for_strong_label():
+    strong = GOLDEN.replace(
+        "- Assumption Strength: 🔴 Weak — the keystone macro premise is Contradicted.",
+        "- Assumption Strength: 🟢 Strong — the load-bearing set is Supported.",
+    )
+    assert _results(strong)["tldr_strength_light"] is True
+
+
+def test_tldr_strength_light_vacuous_when_no_strength_line():
+    # A render with no Assumption Strength line in the TL;DR must not fail this check.
+    no_line = GOLDEN.replace(
+        "- Assumption Strength: 🔴 Weak — the keystone macro premise is Contradicted.\n",
+        "",
+    )
+    assert _results(no_line)["tldr_strength_light"] is True
 
 
 # --- TL;DR is a required section (standard render) --------------------------

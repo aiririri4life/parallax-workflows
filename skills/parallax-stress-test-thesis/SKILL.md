@@ -39,6 +39,7 @@ description: "Pressure-tests a written investment thesis: decomposes it into fal
 /parallax-stress-test-thesis "…thesis…" --json                    # structured output for embedding (no prose required)
 /parallax-stress-test-thesis "…thesis…" compare=<prior-run JSON>  # decay-compare: what changed vs. last run (reads today live)
 /parallax-stress-test-thesis "…thesis…" --house-view-audit        # opt in to logging house-view consumption (off by default)
+/parallax-stress-test-thesis "…thesis…" role=rm client_profile={…}  # tailor which outputs lead to the operator's role (RM → client-facing plain-language)
 ```
 
 **Optional XML input form** (equivalent to the inline form above — accept either; a thesis wrapped in
@@ -51,7 +52,9 @@ carrying several delimited theses) trigger **book mode**: each thesis gets its o
 Phase 6 aggregates across them. Unknown tags are ignored, not errors. There is no persisted-state /
 "watcher" import tag — this skill writes nothing and reads no prior-run state.
 
-**Degenerate inputs** (handle before Phase 1 — see `references/assumption-decomposition.md` for detail): tickers with no argument → ask for the *why*; argument with no tickers → run Phases 2 and 4, skip Phase 3 and say so; no `client_profile` → run Pass 1 only, state Pass 2 was skipped for lack of a profile; `client_profile` missing `horizon` or `income_reliance` → ask for those before running Phase 5. In
+**Degenerate inputs** (handle before Phase 1 — see `references/assumption-decomposition.md` for detail): tickers with no argument → ask for the *why*; argument with no tickers → run Phases 2 and 4, skip Phase 3 and say so; no `client_profile` → run Pass 1 only, state Pass 2 was skipped for lack of a profile; `client_profile` missing `horizon` or `income_reliance` → ask for those before running Phase 5 **via a
+clickable `AskUserQuestion`** (role + horizon + income + risk-capacity in one call — see
+`references/client-conditioning.md` "Collecting the profile interactively"), never a free-text prompt. In
 book mode, apply these per-thesis rules to each thesis independently; a single supplied `client_profile`
 conditions the whole book (all theses share the one holder).
 
@@ -67,6 +70,12 @@ drop the disclaimer.
   skip facts. When interactive and no level was given (via `<analysis_level>` or
   inline), ask once with a clickable `AskUserQuestion` (Quick note / Standard / Deep dive) — fold it
   into the `client_profile` questionnaire if one is being collected.
+- **Role-tailored presentation** — an optional `role` (individual / rm / wealth_advisor /
+  fund_manager / research_analyst / engineering) makes the skill *default* to the outputs that role
+  most needs (plain-language for individuals/RMs, book mode + provenance for fund managers, `--json`
+  for engineering). It tailors which optional features lead — **never** a status, the disclaimer, or
+  the analysis, and role ≠ `client_profile` (an RM's holder is their client). Ask for it in the
+  clickable profile questionnaire when it changes what you lead with; absent → standard defaults. → `references/output-modes.md` §9
 - **Single-layer scope** — if the user asks for one layer only ("just macro", "personal angle
   only"), test only that layer but still render the full five-layer Assumption Map with the rest
   marked *not tested*, scope the World Verdict/Assumption Strength to the tested layer, and warn that
@@ -173,14 +182,14 @@ Depth (§Modes) sets which of these render in full vs. collapsed; the **bold-sta
 survive at every depth and in every export — they are never collapsed away. → `references/output-modes.md`.
 
 - **`~N min read`** *(top marker)* — estimated read time of the rendered report (~200 wpm, rounded up); labeled as an estimate
-- **TL;DR** — 3–5 bullets compressing the body (Assumption Strength, top vulnerability + status, most-likely break + horizon, top client flag if any), closing with "rates the argument, not the security." Introduces nothing not in the body below
+- **TL;DR** — 3–5 bullets compressing the body (Assumption Strength **with a 🔴/🟡/🟢 traffic-light indicator** — `🔴 Weak` / `🟡 Mixed` / `🟢 Strong`, a glyph for how well-supported the argument is and explicitly **not** a trade signal; top vulnerability + status; most-likely break + horizon; top client flag if any), closing with "rates the argument, not the security." Introduces nothing not in the body below. → `references/output-modes.md` §2
 - **Thesis Restatement** (1–2 sentences confirming what was understood, per the Phase 1 playback)
 - **Client Profile Summary** *(only if `client_profile` supplied)* — the fields as given, and which high-impact fields (if any) were missing and asked for
 - **Assumption Map** (table: `id`, `layer`, `claim`, `criticality`, `testability`)
 - **Pass 1 — Load-Bearing Vulnerabilities** (the headline: 2–4 assumptions the thesis most depends on, by criticality × Supported/Contradicted status)
 - **Assumption-by-Assumption** (table: `id`, `status`, `break_condition`, `magnitude`, `time_to_play_out`)
 - **Position-Level Read** *(omit entirely if no tickers — say so under Thesis Restatement instead)* — direction alignment, peer-relative factor check, macro alignment, news + staleness caveat, per symbol
-- **World Verdict** (Phase 4 records synthesis; `get_assessment` optional cross-check — what has to be true, where it most likely fails). Lead it with an **Assumption Strength** label — `Weak` / `Mixed` / `Strong` — rating how well the load-bearing assumptions are supported by the current reads (Weak = a high-criticality assumption is Contradicted or Unconfirmed; Strong = the load-bearing set is Supported). **This rates the argument's evidential support, not the security — it is explicitly NOT a buy/sell/hold call, a PASS/FAIL grade, or a suitability verdict.** Never render it as a traffic-light gate that halts or short-circuits the report; every section still runs. Optionally annotate each Load-Bearing Vulnerability with the same Weak/Mixed/Strong tag for its own assumption.
+- **World Verdict** (Phase 4 records synthesis; `get_assessment` optional cross-check — what has to be true, where it most likely fails). Lead it with an **Assumption Strength** label — `Weak` / `Mixed` / `Strong` — rating how well the load-bearing assumptions are supported by the current reads (Weak = a high-criticality assumption is Contradicted or Unconfirmed; Strong = the load-bearing set is Supported). **This rates the argument's evidential support, not the security — it is explicitly NOT a buy/sell/hold call, a PASS/FAIL grade, or a suitability verdict.** The TL;DR shows this label with a 🔴/🟡/🟢 traffic-light glyph (🔴 Weak / 🟡 Mixed / 🟢 Strong) — a visual severity cue for *argument strength*, **not** a buy/sell signal and **not** a control-flow gate: 🟢 never means "buy", 🔴 never means "sell", and every section still renders regardless of the light. Optionally annotate each Load-Bearing Vulnerability with the same Weak/Mixed/Strong tag for its own assumption.
 - **House-View Alignment** *(only if an active house view exists at `~/.parallax/active-house-view/`; omit entirely otherwise)* — the required active-view banner plus a single blanket note (via the shared `render_view_conflict` helper) flagging where the thesis's macro/sector/factor claims agree or disagree with the firm's positioning. **Flag only: the view never changes an assumption's Pass-1 status, criticality, or rank** — it is a positioning conflict to resolve at decision time, orthogonal to the evidential read. Client-invariant. → `references/house-view-check.md`
 - **Pass 2 — Holder-Dependent Assumptions** *(only if profile supplied)* — the layer-5 rows, Supported/Contradicted for this person
 - **Pass 2 — Client-Conditioned Vulnerabilities** *(only if profile supplied)* — re-ranked using `client_severity`; state what moved vs. the Pass-1 ranking and why

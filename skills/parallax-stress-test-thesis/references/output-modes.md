@@ -30,7 +30,12 @@ the Thesis Restatement. Three to five bullets, each a compression of something a
 **the TL;DR never introduces a claim, status, or number that does not appear in the fuller report
 below it.** Include, in order:
 
-- the **Assumption Strength** label (`Weak` / `Mixed` / `Strong`) and one clause of why;
+- the **Assumption Strength** label with a **traffic-light indicator** — `🔴 Weak` / `🟡 Mixed` /
+  `🟢 Strong` — and one clause of why. The light rates **how well the argument's load-bearing
+  assumptions are supported by the current reads**, and nothing else: 🔴 = a high-criticality
+  assumption is Contradicted/Unconfirmed, 🟢 = the load-bearing set is Supported. It is **not a trade
+  signal** — 🟢 means "the reasoning holds up", never "buy"; 🔴 means "the reasoning is fragile",
+  never "sell" — and it never gates or halts the report (every section still renders below it);
 - the single most load-bearing vulnerability, with its Pass-1 status;
 - where the thesis most likely breaks first, and over what horizon;
 - *(only if a `client_profile` was supplied)* the top client-conditioned flag, if any fired;
@@ -193,3 +198,29 @@ re-runs Pass 1 against *today's* reads and diffs.
   what to do about the change. It reports the drift; the reader decides.
 - Pairs with §7: the JSON a run emits today is exactly the artifact you feed back next week. That is
   the intended, no-persistence "monitoring" loop — state lives with the caller, never in the skill.
+
+## 9. Role-tailored presentation (`role`)
+
+An optional `role` input names *who is driving the run*, so the skill can **default** to the outputs
+that role most needs. It changes which optional features lead — never the analysis. Recognized roles:
+
+| `role` | Leads with | Why |
+|---|---|---|
+| `individual` | plain-language throughout, `standard` depth, taxonomy minimized | the holder is the reader; the layer/criticality jargon is noise |
+| `rm` (relationship manager) | client-facing **plain-language export** + **Talking points** offered up front; suitability flags surfaced prominently | preparing to brief *their* client — the analyzed holder is that client |
+| `wealth_advisor` | as `rm`, with the stronger client-profile disclaimer emphasized | suitability-sensitive audience |
+| `fund_manager` | `standard`/`deep`, **book mode** and **Run Provenance** on by default | runs many theses; wants cross-thesis concentration + auditability |
+| `research_analyst` | `deep` verbosity, per-assumption rationale, peer detail | due-diligence reader; wants the full reasoning chain |
+| `engineering` / `embedder` | **`--json`** structured output by default | consuming the payload in a harness, not reading prose |
+
+Hard rules (same spirit as every mode above):
+
+- **Role tailors which optional features surface by default — nothing else.** It never changes a
+  status, skips Phase 0, drops the disclaimer or AI disclosure, or turns a risk observation into
+  advice. Every feature stays available on request regardless of role.
+- **Role is not the `client_profile`.** For an RM/advisor the analyzed holder is their *client*, whose
+  profile is supplied separately; for an `individual` the operator and the holder coincide. A role
+  with no `client_profile` still runs Pass 1 only.
+- Unknown/absent role → no tailoring; run the standard defaults. Ask for it via the clickable
+  questionnaire (`client-conditioning.md`, "Collecting the profile interactively") when it would
+  change which outputs you lead with — but never block the run waiting for it.

@@ -252,6 +252,29 @@ def _c_read_time_marker(t, spec) -> Check:
                  f"marker={m.group(0) if m else None}")
 
 
+_STRENGTH_LIGHT = {"weak": "🔴", "mixed": "🟡", "strong": "🟢"}
+
+
+def _c_tldr_strength_light(t, spec) -> Check:
+    """The TL;DR's Assumption Strength label carries a matching traffic-light glyph
+    (Weak→🔴, Mixed→🟡, Strong→🟢) — a standard-render visual cue for argument strength.
+    Scoped to the TL;DR line naming the strength: the correct light must be present and
+    no mismatched light (a different label's glyph) may sit on that line. Vacuous only
+    when no strength label appears in the TL;DR (e.g. a non-standard render)."""
+    tldr = _section_text(t.final_prose, "TL;DR", spec.section_labels)
+    line = next((l for l in tldr.splitlines() if "assumption strength" in l.lower()), None)
+    if line is None:
+        return Check("tldr_strength_light", True, "no assumption-strength line in TL;DR")
+    low = line.lower()
+    label = next((w for w in ("weak", "mixed", "strong") if re.search(rf"\b{w}\b", low)), None)
+    if label is None:
+        return Check("tldr_strength_light", True, "no strength label on line")
+    want = _STRENGTH_LIGHT[label]
+    wrong = sorted(e for lbl, e in _STRENGTH_LIGHT.items() if lbl != label and e in line)
+    ok = want in line and not wrong
+    return Check("tldr_strength_light", ok, f"label={label} want={want} present={want in line} wrong_lights={wrong}")
+
+
 _NO_HALLUC = next(c for c in CRITERIA if c["id"] == "no_hallucinated_data")  # COPIED
 
 SPEC = EvalSpec(
@@ -270,6 +293,7 @@ SPEC = EvalSpec(
         "break_condition_fields",      # NEW (magnitude + time_to_play_out mandatory)
         "read_time_marker",            # NEW (standard-render ~N min read marker)
         "json_no_rec",                 # NEW (structured payload carries no signal key)
+        "tldr_strength_light",         # NEW (TL;DR strength carries matching 🔴/🟡/🟢 glyph)
         "orchestrator_length",         # GENERIC
     ],
     extra_checks={
@@ -278,6 +302,7 @@ SPEC = EvalSpec(
         "break_condition_fields": _c_break_condition_fields,
         "read_time_marker": _c_read_time_marker,
         "json_no_rec": _c_json_no_rec,
+        "tldr_strength_light": _c_tldr_strength_light,
     },
     tier2_criteria=[
         _NO_HALLUC,  # COPIED
